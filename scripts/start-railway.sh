@@ -7,7 +7,8 @@ if [[ -z "${RAILWAY_PUBLIC_DOMAIN:-}" ]]; then
   echo "安全啟動失敗：請先在 Railway 產生公開網域 (RAILWAY_PUBLIC_DOMAIN)。" >&2
   exit 1
 fi
-if [[ ${#PIXEL_OFFICE_ACCESS_PASSWORD} -lt 16 ]]; then
+owner_password="${PIXEL_OFFICE_ACCESS_PASSWORD:-}"
+if [[ ${#owner_password} -lt 16 ]]; then
   echo "安全啟動失敗：必須設置至少16字的 PIXEL_OFFICE_ACCESS_PASSWORD，否則不能公開辦公室。" >&2
   exit 1
 fi
