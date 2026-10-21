@@ -128,7 +128,7 @@ body.hq .stage::before {
 .hq-live-pill:not(.connected) i { background: #d7a164; }
 body.hq .office-wrap {
   z-index: 1;
-  padding: 12px; border-radius: 22px;
+  padding: 0; border-radius: 22px;
   background: linear-gradient(145deg, rgba(198,218,248,.21), rgba(33,61,95,.32));
   border: 1px solid rgba(186, 211, 244, .3);
   box-shadow: 0 12px 0 #071022, 0 25px 75px rgba(0, 0, 0, .44), inset 0 1px rgba(255,255,255,.28);
@@ -137,9 +137,10 @@ body.hq #office {
   border-radius: 12px;
   box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 7px 32px rgba(0,0,0,.38);
 }
-body.hq .roster { z-index: 1; gap: 7px; margin-top: 28px; }
+body.hq .roster { z-index: 1; gap: 7px; margin-top: 14px; }
 body.hq .roster-chip { background: rgba(24, 42, 67, .88); border-color: rgba(153, 187, 234, .24); padding: 7px 12px; border-radius: 12px; }
 body.hq .roster-chip.selected { background: rgba(106, 76, 37, .32); border-color: #edc279; }
+body.hq.chat-open .stage, body.hq.meeting-open .stage { padding-right: 28px; }
 body.hq .room-label { color: rgba(16,25,32,.58); font-family: "Manrope",sans-serif; font-size: 9px; font-weight: 900; }
 body.hq .label { font-family: "Noto Sans TC", "Manrope", sans-serif; font-size: 11px; font-weight: 850; }
 body.hq .chat, body.hq .modal-card, body.hq .menu-pop {
@@ -212,6 +213,7 @@ body.hq .chat-head { background: #1a2d49; }
   body.hq .topbar { height:55px;min-height:55px; padding:0 10px; overflow-x:auto; scrollbar-width:none; }
   body.hq .topbar .brand-name { display:none; }
   body.hq .stage {padding:85px 12px 15px;}
+  body.hq.chat-open .stage, body.hq.meeting-open .stage {padding-right:12px;}
   .hq-stage-heading {top:18px;left:15px;right:15px}
   body.hq .chat {top:55px;}
 }
