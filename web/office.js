@@ -654,6 +654,7 @@ class Office {
       b.restore();
     }
     drawWalls(b, this.blocked, this.doors, t, this.theme, this.wallItems, dim);
+    if (isHq) drawSpaceHull(b);
     const items = [];
     const faded = (id, fn) => (dim && id === dim ? () => { b.save(); b.globalAlpha = 0.3; fn(); b.restore(); } : fn);
     for (const d of this.decor) items.push({ y: d.y, draw: faded(d.id, () => d.draw(b, t)) });
@@ -736,40 +737,54 @@ function traitOf(e) {
 }
 const lifeStrings = () => (window.PO && window.PO.strings && window.PO.strings.ui && window.PO.strings.ui.life) || {};
 function drawHqCharm(b, t) {
-  // A flat woven rug and wall fairy lights: purely decorative, no furniture,
-  // seats, walkable cells or click coordinates are changed.
-  const x = 10 * TILE, y = 10 * TILE, w = 10 * TILE, h = 5 * TILE;
-  b.fillStyle = "#b79283"; b.fillRect(x + 6, y + 8, w - 12, h - 12);
-  b.fillStyle = "#ecd4bd"; b.fillRect(x, y, w, h - 8);
-  b.fillStyle = "#d6ac9d"; b.fillRect(x + 5, y + 5, w - 10, h - 18);
-  b.fillStyle = "#e7c8b2"; b.fillRect(x + 10, y + 10, w - 20, h - 28);
-  for (let px = x + 8; px < x + w; px += 12) {
-    b.fillStyle = "#f4e5d1"; b.fillRect(px, y - 4, 4, 5); b.fillRect(px, y + h - 9, 4, 5);
+  // Live interactive scene: keep the shared navigation geometry and real staff.
+  b.fillStyle = "#08152c"; b.fillRect(0, 0, LW, LH);
+  for (let i=0;i<95;i++) {
+    const sx=(i*139+17)%LW, sy=(i*83+11)%LH;
+    b.fillStyle=i%4===0?"#8ddfff":"#d9e9ff";
+    b.globalAlpha=.3+(i%5)*.12; b.fillRect(sx,sy,i%7===0?2:1,1);
   }
-  // Little cloud stitched into the rug, with blush and sleepy eyes.
-  const cx = x + w / 2, cy = y + 54;
-  b.fillStyle = "#fff1d9";
-  b.fillRect(cx - 48, cy - 10, 96, 32); b.fillRect(cx - 36, cy - 23, 72, 15);
-  b.fillRect(cx - 20, cy - 31, 40, 12);
-  b.fillStyle = "#735d60"; b.fillRect(cx - 23, cy + 1, 8, 3); b.fillRect(cx + 15, cy + 1, 8, 3);
-  b.fillRect(cx - 3, cy + 9, 6, 3);
-  b.fillStyle = "#e5aa9e"; b.fillRect(cx - 32, cy + 8, 12, 5); b.fillRect(cx + 20, cy + 8, 12, 5);
-  b.textAlign = "center"; b.font = "bold 13px Arial,sans-serif";
-  b.fillStyle = "#866b67"; b.fillText("A LITTLE OFFICE, BIG IDEAS", cx, y + 110);
-  const stars = [[x+30,y+31],[x+w-33,y+38],[x+56,y+110],[x+w-50,y+106]];
-  for (const [sx,sy] of stars) {
-    b.fillStyle = "#fff0ca";
-    b.fillRect(sx-5,sy-1,11,3); b.fillRect(sx-1,sy-5,3,11);
+  b.globalAlpha=1;
+  for (const r of ROOMS) {
+    const x=r.x0*TILE, y=r.y0*TILE, w=(r.x1-r.x0+1)*TILE, h=(r.y1-r.y0+1)*TILE;
+    b.fillStyle="#132840"; b.fillRect(x+2,y+2,w-4,h-4);
+    b.strokeStyle="#274e6b"; b.lineWidth=1;
+    for(let px=x+16;px<x+w;px+=32){b.beginPath();b.moveTo(px,y+5);b.lineTo(px,y+h-5);b.stroke();}
+    for(let py=y+16;py<y+h;py+=32){b.beginPath();b.moveTo(x+5,py);b.lineTo(x+w-5,py);b.stroke();}
+    b.strokeStyle=r.key==="meeting"?"#ba9bff":"#47cce7"; b.lineWidth=3;
+    b.strokeRect(x+6,y+6,w-12,h-12);
+    b.fillStyle="#38708b"; b.fillRect(x+10,y+h-16,w-20,5);
   }
-  b.strokeStyle = "#8a9aa8"; b.lineWidth = 1;
-  b.beginPath(); b.moveTo(8*TILE, 2*TILE+2); b.quadraticCurveTo(15*TILE,3*TILE,22*TILE,2*TILE+2); b.stroke();
-  for (let i=0; i<12; i++) {
-    const u=i/11, lx=(8+14*u)*TILE, ly=2*TILE+2+Math.sin(Math.PI*u)*16;
-    const glow = REDUCED_MOTION.matches ? 0.75 : 0.65 + Math.sin(t/1800+i)*0.2;
-    b.globalAlpha=glow; b.fillStyle=i%3===0?"#e8b7ac":i%3===1?"#f5dfa7":"#bcd9c2";
-    b.fillRect(lx-2,ly,5,7); b.globalAlpha=1;
-  }
+  // Orbital viewport across the studio; decorative only, never a fake task.
+  const cx=15*TILE, cy=12*TILE;
+  b.fillStyle="#07172d"; b.fillRect(9*TILE,9*TILE,12*TILE,6*TILE);
+  b.strokeStyle="#4dd7f5";b.lineWidth=2;b.strokeRect(9*TILE+3,9*TILE+3,12*TILE-6,6*TILE-6);
+  b.fillStyle="#23598b";b.beginPath();b.arc(cx,cy,62,0,Math.PI*2);b.fill();
+  b.fillStyle="#4ea8bd";b.beginPath();b.ellipse(cx-12,cy-15,30,16,.4,0,Math.PI*2);b.fill();
+  b.strokeStyle="#83dcff";b.beginPath();b.ellipse(cx,cy,90,22,-.25,0,Math.PI*2);b.stroke();
+  b.font="bold 12px Arial,sans-serif";b.textAlign="center";b.fillStyle="#d5f5ff";
+  b.fillText("HANG FAI  /  MISSION CONTROL",cx,cy+77);
 }
+function drawSpaceHull(b) {
+  // Hull follows the same blocked wall cells as the pathfinder.
+  b.save();
+  for(const k of POLayout.WALLS){
+    const [tx,ty]=k.split(",").map(Number); if(ty<2)continue;
+    b.fillStyle="#273b59";b.fillRect(tx*TILE,ty*TILE,TILE,TILE);
+    b.fillStyle="#496887";b.fillRect(tx*TILE,ty*TILE,TILE,5);
+    b.fillStyle="#65dbf2";
+    if(tx===7||tx===22)b.fillRect(tx*TILE+13,ty*TILE+6,3,TILE-10);
+    else b.fillRect(tx*TILE+3,ty*TILE+12,TILE-6,3);
+  }
+  b.fillStyle="#182c48";b.fillRect(0,0,LW,2*TILE);
+  b.strokeStyle="#70ddff";b.lineWidth=3;b.strokeRect(3,3,LW-6,2*TILE-6);
+  b.font="bold 17px Arial,sans-serif";b.textAlign="center";b.fillStyle="#e0f7ff";
+  b.fillText("HANG FAI  /  SPACE HQ",LW/2,23);
+  b.font="10px Arial,sans-serif";b.fillStyle="#8bd1e8";
+  b.fillText("EXECUTIVE  ·  DESIGN  ·  ENGINEERING  ·  DIGITAL  ·  FINANCE",LW/2,43);
+  b.restore();
+}
+
 function lifePick(arr, fallback = "") { return Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : fallback; }
 // how long a balloon stays up: longer sentences need longer to read
 const lifeMs = (text) => Math.min(5200, 1600 + String(text || "").length * 55);

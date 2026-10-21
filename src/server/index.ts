@@ -354,6 +354,33 @@ function wokeManager(o: OfficeRt, reason: string) {
   logEvent(o, { kind: "pm_woken", emp: managerOf(o)?.cfg.id, by: "office", data: { reason } });
 }
 
+// CEO supervision: deterministic scans are free of model calls. A changed exception
+// queues one batched manager follow-up and existing daily limits still apply.
+function ceoExceptions(o: OfficeRt, now=Date.now()) {
+  return (o.def.id === "hang-fai" ? [...offices.values()] : [o]).flatMap(source => source.board.tasks.filter(k=>k.status!=="done").flatMap(k=>{
+    const owner=source.employees.get(k.owner);
+    const reason=!owner ? "未有有效負責人" : k.status==="blocked" ? "工作受阻" : k.status==="review" ? "成果待審核" :
+      k.status==="doing" && now-k.updated>30*60e3 ? "30分鐘未更新進度" :
+      k.status==="todo" && now-k.updated>24*60*60e3 ? "待辦超過一天" : "";
+    return reason ? [{office:source.def.id,officeName:source.def.name,id:k.id,title:k.title,owner:owner?.cfg.name??k.owner,status:k.status,reason,updated:k.updated}] : [];
+  }));
+}
+function superviseCeo(o: OfficeRt) {
+  if(o.def.id!=="hang-fai")return;
+  const now=Date.now(), current=ceoExceptions(o,now), pm=managerOf(o);
+  o.store.setMeta("_office","ceoCheckedAt",now);
+  if(!pm || !current.length || capReached(o))return;
+  const seen=o.store.getMeta<Record<string,string>>("_office","ceoFollowups")??{};
+  const changed=current.filter(k=>seen[k.office+":"+k.id]!==`${k.status}:${k.updated}`);
+  if(!changed.length)return;
+  for(const k of changed)seen[k.office+":"+k.id]=`${k.status}:${k.updated}`;
+  o.store.setMeta("_office","ceoFollowups",seen);
+  pm.addDigest("CEO 追蹤工作："+changed.map(k=>`[${k.officeName}] #${k.id} ${k.title}，負責 ${k.owner}，${k.reason}`).join("；")+
+    "。逐項核對最新成果、負責人、下一步及受阻原因。未驗證不得標完成；先處理現有任務，不自行開新研究或寄信。需要老闆決定時列出具體事項。");
+  nudgeManager(o);
+}
+setInterval(()=>{for(const o of offices.values())superviseCeo(o);},60000).unref();
+
 // ---- stuck work ----
 // "doing" on the board is only a label. After a restart (shutdown keeps running tasks "doing"), a reset, or a queue that was only
 // in memory, nobody works on such a task, yet it used to count as running forever: the manager was never called and no round began.
@@ -985,6 +1012,34 @@ r.put("/layout", (req: OReq, res) => {
   broadcast({ type: "layout", office: o.def.id, layout: o.layout.doc });
   res.json({ layout: o.layout.doc });
 });
+// Read-only dashboard: no model calls, derived from persisted events and source metadata.
+r.get("/finance-snapshot", (req: OReq, res) => {
+  const o=officeOf(req); if(!o)return res.status(404).end();
+  if(!["hang-fai","unibright-ops"].includes(o.def.id))return res.status(404).end();
+  const def=settings.offices.find(p=>p.id==="unibright-ops");
+  try { res.json(JSON.parse(fs.readFileSync(path.join(def!.cwd,"finance-snapshot.json"),"utf8"))); }
+  catch { res.status(404).json({error:"未有財務快照"}); }
+});
+r.get("/secretary-mail", (req: OReq, res) => {
+  const o=officeOf(req); if(!o || o.def.id!=="hang-fai")return res.status(404).end();
+  try {res.json(JSON.parse(fs.readFileSync(path.join(path.dirname(configPath(R)),"secretary-mail.json"),"utf8")));}
+  catch {res.status(404).json({error:"未有電郵快照"});}
+});
+r.get("/hq-summary", (req: OReq, res) => {
+  const o = officeOf(req);
+  if (!o) return res.status(404).json({error: t("server.notFound")});
+  const dateKey = (ts: number) => new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Hong_Kong", year:"numeric",month:"2-digit",day:"2-digit"}).format(ts);
+  const yesterday = dateKey(Date.now() - 86400000);
+  const events = o.events.since(0, 1000).filter(e => dateKey(e.ts) === yesterday);
+  const projects = settings.offices.filter(p => p.id !== "hang-fai").map(p => {
+    const sources = characterProjects({id:"manager",officeId:"hang-fai"}, [p], settings.dataDir)[0];
+    return {id:p.id,name:p.name,sources:sources?.sources.map(s => s.name) ?? []};
+  });
+  res.json({ceo:{checkedAt:o.store.getMeta<number>("_office","ceoCheckedAt")??null,exceptions:ceoExceptions(o)}, yesterday:{date:yesterday,events}, projects, costs:costsBrief(o),
+    attention:o.board.tasks.filter(k => k.status === "review" || k.status === "blocked"),
+    sharedNotes:o.board.notes.slice(-12),
+     meetingMode:o.def.id === "hang-fai" ? "coordinated" : "independent"});
+});
 r.get("/quota", (_req, res) => res.json(getQuota()));
 r.get("/activity", (req: OReq, res) => {
   const o = officeOf(req);
@@ -1527,7 +1582,7 @@ function startMeeting(o: OfficeRt, topic: string, ids: string[], interruptBusy: 
   if (o.meeting?.active) return;
   const people = ids.map((id) => o.employees.get(id)).filter((e): e is Employee => !!e && !e.inMeeting);
   if (!people.length) return;
-  const m = new Meeting(topic, people, o.store, o.def.cwd);
+  const m = new Meeting(topic, people, o.store, o.def.cwd, o.def.id === "hang-fai");
   o.meeting = m;
   const office = o.def.id;
   m.on("state", () => { if (o.meeting === m) broadcast({ type: "meeting", office, meeting: m.state() }); });

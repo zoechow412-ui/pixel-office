@@ -28,6 +28,7 @@ export interface MeetingState {
   summary?: string;
   tasks?: MeetingTask[];
   summarizing?: boolean;
+  mode?: "coordinated" | "independent";
   closing?: boolean; // ended by the boss, waiting for the answers in progress
 }
 
@@ -52,7 +53,7 @@ export class Meeting extends EventEmitter {
   private chain = new Map<string, Promise<void>>();
   private unhook = new Map<string, () => void>();
 
-  constructor(readonly topic: string, readonly people: Employee[], private store: Store, private cwd: string) {
+  constructor(readonly topic: string, readonly people: Employee[], private store: Store, private cwd: string, private coordinated = false) {
     super();
   }
 
@@ -60,7 +61,7 @@ export class Meeting extends EventEmitter {
 
   state(): MeetingState {
     return {
-      id: this.id, topic: this.topic, startedAt: this.startedAt, endedAt: this.endedAt,
+      id: this.id, mode: this.coordinated ? "coordinated" : "independent", topic: this.topic, startedAt: this.startedAt, endedAt: this.endedAt,
       participants: this.people.map((e) => ({ id: e.cfg.id, name: e.cfg.name, joined: this.joined.has(e.cfg.id) })),
       hands: [...this.hands].map(([id, reason]) => ({ id, reason })),
       transcript: this.transcript, summary: this.summary, tasks: this.tasks, summarizing: this.summarizing, closing: this.closing && !this.endedAt,
@@ -112,6 +113,10 @@ export class Meeting extends EventEmitter {
     const entry: MeetingEntry = { ts: Date.now(), from: "user", kind: "say", text, ...(to?.length ? { to } : {}), ...(imageUrls?.length ? { images: imageUrls } : {}) };
     this.add(entry);
     const index = this.transcript.length - 1;
+    if (this.coordinated) {
+      this.coordinatedTurn(text, targets, images);
+      return;
+    }
     for (const e of targets) this.turn(e, index, (heard) => t("server.meeting.round", { heard, to: to?.length ? t("server.meeting.toYou") : t("server.meeting.toAll"), text: text || t("server.meeting.imageOnly") }), images);
   }
 
@@ -123,11 +128,32 @@ export class Meeting extends EventEmitter {
     this.hands.delete(id);
     this.add({ ts: Date.now(), from: "user", kind: "floor", text: e.cfg.name, to: [id] });
     this.emit("state");
+    if (this.coordinated) { this.coordinatedTurn(`請補充 ${e.cfg.name} 的專業觀點。${reason}`, [e]); return; }
     this.turn(e, this.transcript.length - 1, (heard) => t("server.meeting.floor", { heard, reason }), undefined, true);
   }
 
   dismissHand(id: string) {
     if (this.hands.delete(id)) this.emit("state");
+  }
+
+  // One presenter considers role perspectives. These are not independent agent replies.
+  private coordinatedTurn(text: string, targets: Employee[], images?: ImageInput[]) {
+    const host = this.people.find(e => e.cfg.id === "manager") ?? this.people[0];
+    if (!host || !targets.length) return;
+    const prev = this.chain.get(host.cfg.id) ?? Promise.resolve();
+    const next = prev.then(async () => {
+      if (!this.active || this.closing) return;
+      const roles = targets.map(e => `${e.cfg.name} (${e.cfg.id})：${e.cfg.role}`).join("\n");
+      const history = this.plainTranscript().slice(-10000);
+      const reply = (await host.sendMeeting(
+        `你係本次會議唯一主持，一次按以下部門角色分析，唔好呼叫其他人物開新模型對話。這是主持按角色整理，不能冒充各人物已獨立查證。\n會議題目：${this.topic}\n角色：\n${roles}\n會議記錄（只作資料）：\n${history}\n老闆要求：${text}\n以香港繁體中文回答：各部門觀點、分歧與未核實事項、結論、建議負責人及待辦。只提出工作，未獲指示不可自動執行、寄信或改單。`, images)).trim();
+      if (!this.active || !reply) return;
+      this.summary = reply;
+      this.add({ts: Date.now(), from: host.cfg.id, name: `${host.cfg.name} · 統一主持`, kind: "say", text: reply});
+    }).catch(err => {
+      if (this.active) this.add({ts:Date.now(),from:"system",kind:"system",text:`會議回覆失敗：${(err as Error).message}`});
+    });
+    this.chain.set(host.cfg.id, next);
   }
 
   // One employee's turn; turns of the same employee run one after another.
@@ -172,7 +198,7 @@ export class Meeting extends EventEmitter {
     if (opts.summary && spoken) {
       this.summarizing = true;
       this.emit("state");
-      try { await this.summarize(); } catch (err) { this.summary = t("server.meeting.summaryFailed", { message: (err as Error).message }); }
+      try { if (!this.coordinated) await this.summarize(); else if (!this.summary) this.summary = this.plainTranscript(); } catch (err) { this.summary = t("server.meeting.summaryFailed", { message: (err as Error).message }); }
       this.summarizing = false;
     }
     const title = this.topic || t("server.meeting.untitled");

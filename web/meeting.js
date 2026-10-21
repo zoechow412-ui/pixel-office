@@ -50,7 +50,7 @@ const meetingUI = (() => {
     if (!m.transcript.length && !m.endedAt) {
       const hint = document.createElement("div");
       hint.className = "empty";
-      hint.innerHTML = `<div>${escapeHtml(t("ui.meeting.empty"))}</div>`;
+      hint.innerHTML = `<div>${escapeHtml((m.mode === "coordinated" ? "統一主持模式：一次整理各部門觀點及待辦，並非各人物獨立查證。" : t("ui.meeting.empty")))}</div>`;
       body.appendChild(hint);
     }
     for (const entry of m.transcript) appendEntry(m, entry);
@@ -76,7 +76,7 @@ const meetingUI = (() => {
     $("meetTopic").textContent = m.topic || t("ui.meeting.title");
     const mins = Math.max(1, Math.round(((m.endedAt || Date.now()) - m.startedAt) / 60e3));
     const n = m.participants.filter((p) => p.joined).length;
-    $("meetSub").textContent = m.endedAt ? `${t("ui.meeting.ended")} · ${t("ui.meeting.minutes", { n: mins })}` : m.closing ? t("ui.meeting.closing") : `${t("ui.meeting.cost", { n })} · ${t("ui.meeting.minutes", { n: mins })}`;
+    $("meetSub").textContent = m.endedAt ? `${t("ui.meeting.ended")} · ${t("ui.meeting.minutes", { n: mins })}` : m.closing ? t("ui.meeting.closing") : `${m.mode === "coordinated" ? n+" 人參與 · 統一主持" : t("ui.meeting.cost", { n })} · ${t("ui.meeting.minutes", { n: mins })}`;
   }
 
   function renderPeople(m) {
@@ -373,7 +373,7 @@ const meetingUI = (() => {
   function refreshStart() {
     const sel = picked();
     $("meetBusyField").hidden = !sel.some((c) => c.dataset.busy);
-    $("meetCost").textContent = sel.length ? t("ui.meeting.cost", { n: sel.length }) : t("ui.meeting.noOne");
+    $("meetCost").textContent = sel.length ? (state.office === "hang-fai" ? sel.length+" 人參與 · 一位主持整理各部門觀點" : t("ui.meeting.cost", { n: sel.length })) : t("ui.meeting.noOne");
   }
   const closeStart = () => { $("meetStartModal").hidden = true; };
   $("btnMeeting").onclick = openStart;
