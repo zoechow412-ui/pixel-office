@@ -166,6 +166,10 @@
     }
   }
   function zoomOffice(delta, reset) {
+    if (document.body.classList.contains("hq-reference-active")) {
+      var host=el("officeWrap");var factor=reset?1:Math.min(2.2,Math.max(.7,Number(host.dataset.spaceZoom||1)+delta));
+      host.dataset.spaceZoom=factor;host.style.setProperty("--hq-scene-zoom",factor);return;
+    }
     if (typeof office === "undefined" || !office || typeof office.fit !== "function") return;
     office.zoomFactor = reset ? 1 : Math.min(2.2, Math.max(.75,(office.zoomFactor||1) + delta));
     office.fit();
@@ -326,10 +330,10 @@
       if(document.hidden||spaceScene.hidden)return;
       actors.forEach(function(a){
         if(!a.path.length && a.status==="idle" && !a.meeting && now>a.next){
-          a.path=[[a.home[0]+(a.index%2?2:-2),a.home[1]+1.2],a.home.slice()];a.next=now+6000+(a.index%5)*1100;
+          a.path=[[a.home[0]+(a.index%2?2:-2),a.home[1]+1.2],a.home.slice()];a.next=now+4500+(a.index%5)*500;
         }
         var dest=a.path[0];
-        if(dest){var dx=dest[0]-a.x,dy=dest[1]-a.y,d=Math.hypot(dx,dy),step=dt*6;
+        if(dest){var dx=dest[0]-a.x,dy=dest[1]-a.y,d=Math.hypot(dx,dy),step=dt*(a.meeting||a.path.length>2?8:2.4);
           if(d<=step){a.x=dest[0];a.y=dest[1];a.path.shift();}
           else{a.x+=dx/d*step;a.y+=dy/d*step;}
           a.el.classList.toggle("facing-left",dx<0);

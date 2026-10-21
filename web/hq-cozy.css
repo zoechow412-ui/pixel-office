@@ -72,3 +72,5 @@ body.hq-reference-active .stage{padding-top:100px}
 @media(prefers-reduced-motion:reduce){.hq-space-actor.walking .hq-space-sprite{animation:none}}
 
 .hq-space-actor{width:5%;height:13%}
+
+body.hq-reference-active .office-wrap{width:min(100%,calc((100dvh - 240px) * 1.5 * var(--hq-scene-zoom,1)))!important;min-width:280px;margin-left:auto;margin-right:auto}
