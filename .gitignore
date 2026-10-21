@@ -6,3 +6,6 @@ data/
 
 # Codespaces AI Office runtime state: chat history, keys, employee memories.
 .pixel-office/
+
+# AI provider CLI binaries installed during Railway image build
+.office-clis/
