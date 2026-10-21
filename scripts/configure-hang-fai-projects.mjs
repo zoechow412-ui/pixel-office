@@ -83,7 +83,49 @@ const projects=[
    scope:"DOD Biotech／泰國保健品17款產品的跨境貿易資料、製造商/Free Sale/Ingredient證明、GMP/HACCP/ISO、配方與標籤表格；歷史文件專案，依實際有效證書，不得虛構產品認證。"},
   {id:"ocean-infinity",name:"🎪 OCEAN INFINITY · 活動策劃",
    staff:["manager","marketing","sales","finance","video"],
-   scope:"OCEAN INFINITY COMPANY LIMITED 活動策劃品牌、金色Logo與活動企劃；歷史品牌專案，最新營運情況待確認，所有Logo改動以最後批准版本為準。"}
+   scope:"OCEAN INFINITY COMPANY LIMITED 活動策劃品牌、金色Logo與活動企劃；歷史品牌專案，最新營運情況待確認，所有Logo改動以最後批准版本為準。"},
+  {id:"plumbing-drawings",name:"🚰 PL DRAWINGS · 水喉排水技術圖",
+   staff:["manager","project-manager","architectural","plumbing","researcher","documentation"],
+   scope:"獨立處理 PL Layout、PL Schematic、來水／排水、水錶／閘、廁所／洗手盆及施工符號。只能按客戶最後確認底圖畫線，絕不可私自增加或改動路線；每間房、器具、支管均逐項對照。正式圖則由合資格人士審核。"},
+  {id:"electrical-fire-plans",name:"⚡ M&E DESIGN · 電力消防圖",
+   staff:["manager","project-manager","architectural","electrical-fire","researcher","documentation"],
+   scope:"獨立管理電力單線圖、分錶、電箱／接地、消防系統、防火門／防煙防火、WR1 及規格認證；與水喉圖分開原稿及審核版本。持牌電工及合資格人士負責檢驗和簽署。"},
+  {id:"property-outreach",name:"🏘️ PROPERTY · 地產代理／舊樓掃街",
+   staff:["manager","sales","marketing","researcher","finance"],
+   scope:"舊樓郵箱簡樸房傳單、EAA 地產代理 B2B 轉介名單、非公屋非豪宅舊樓路線、兩人掃街、Google My Maps CSV 與外判推廣協議。聯絡資料須核對官方來源；不把陌生人聯絡方式與其他品牌資料混合，不擅自外發。"},
+  {id:"wp-certification",name:"💧 WP550/551 · 防水產品認證",
+   staff:["manager","researcher","documentation","procurement","marketing","finance"],
+   scope:"DERFOE WP550 新型有機矽納米防水塗料及 WP551 隔熱防水產品的 TDS、CIC Green Product Certification、Paint & Coating、重金屬 ISO 3856、Fugro／測試報價、證書與核證狀態。WP550 與 WP551 分開 SKU 和測試資料，不能虛報完成。"},
+  {id:"fireseal-certification",name:"🔥 SS-N391 · 防火膠耐火測試",
+   staff:["manager","researcher","documentation","electrical-fire","procurement","finance"],
+   scope:"Supcon Adhesive / DERFOE SS-N391 石膏板線性接縫防火填縫膠測試：BS EN 1366-4、BS 476 Part 20/22、HOKLAS、SGS／Intertek／RED 等報價、試件牆體圖、2/3/4 小時方案與 AS 1530.4 現有報告評估。測試標準及認可範圍必須逐案核實。"},
+  {id:"adhesive-wholesale",name:"🧴 GLUE · 免釘膠／AA／502 批發",
+   staff:["manager","sales","marketing","researcher","procurement","estimating","finance","video"],
+   scope:"DERFOE SEC-G7 / SEC-LN01 免釘膠、AA 膠、502 超能膠的香港五金／文具／零售批發策略、分銷客戶名單、客製電郵／WhatsApp／電話話術、包裝規格及價目表。價格只以最新批准清單為準，避免混合產品型號與不存在的採購電郵。"},
+  {id:"rust-products",name:"🛠️ RUST CARE · 防鏽噴劑銷售",
+   staff:["manager","sales","marketing","researcher","procurement","estimating","finance","video"],
+   scope:"DERFOE SC-B202／D202 防鏽、除鏽、滲透潤滑油的 450ml 規格、測試證明、供應渠道、批發報價、香港五金目標客戶與廣告影片。B202／D202 可能屬不同型號，未核實前不得合併成一個 SKU。"},
+  {id:"b2b-sales-leads",name:"📈 B2B SALES · 香港批發客戶開發",
+   staff:["manager","sales","marketing","researcher","procurement","finance"],
+   scope:"公司名單、採購部電話／公開電郵、香港供應商／渠道、淘多多／文具佬／五金店等潛在客戶、官網來源、排序、正式報價與一店一封開發郵件。保持供應產品區分，發送前需要老闆明確審批。"},
+  {id:"derfoe-brand-site",name:"🌐 DERFOE · 官網及產品目錄",
+   staff:["manager","marketing","researcher","developer","procurement","video"],
+   scope:"DERFOE 品牌官網 derfoe.hk、產品目錄 15-17 頁、WP550／WP551、SS、LN-01、502、N382 等產品資料、印刷配色、港式高級工程視覺、正確 Logo、SSL／SEO 與網頁部署。網站素材須遵守品牌原稿，不可假造產品圖或認證。"},
+  {id:"building-supply",name:"🏭 MATERIALS · 建材採購／招標",
+   staff:["manager","sales","project-manager","researcher","procurement","estimating","finance"],
+   scope:"工程化學品、建材規格、供應商、香港工程項目／基建物料採購、公開招標條件、測試標準、材料檢驗、送貨及比較報價。高壓絕緣／納米材料只在有真實 TDS 時研究；不得聲稱已投標或通過測試。"},
+  {id:"housing-seminars",name:"🎤 OUTREACH · 舊樓及簡樸房講座",
+   staff:["manager","sales","marketing","researcher","documentation","video"],
+   scope:"簡樸房合規、舊樓樓宇安全、消防／通風／排水及罰則風險的公眾教育、地區議員／社區協作講座、演示教材、邀約、出席流程及活動跟進。先確認主辦單位與正式授權，不將未發生的講座當完成。"},
+  {id:"food-proposal",name:"🍜 F&B · 餐飲商業提案",
+   staff:["manager","marketing","researcher","estimating","finance","video"],
+   scope:"香港餐飲商業提案、港式美食海報、字體招牌、食物視覺、簡潔可在 PowerPoint 實現的配色和排版；原有品牌及圖片元素只按指定位置修訂。不可自動當成恒輝建築業務品牌。"},
+  {id:"ai-office-platform",name:"🤖 AI OFFICE · 系統開發及連線",
+   staff:["manager","developer","researcher","finance"],
+   scope:"Pixel Office／GitHub zoechow412-ui/pixel-office、14 AI 員工、Codex 與 Gemini 影片、部門座位、任務板、真正模型登入、登入保護、持久化及 Vercel／Railway 部署。以可用性驗收，嚴禁將角色圖像顯示當成模型已連線。"},
+  {id:"private-book-art",name:"📖 PRIVATE · 書本章節插畫",
+   staff:["manager","architectural","marketing","video"],
+   scope:"私人長篇故事／書本封面與逐章情節插畫、人物形象、完整內文查證、按章節情節出圖及封面排版。此區屬私人創作、不是恒輝建築或 DERFOE 業務；不得自動分享書稿、人物照片或敏感私人內容予商業專案。"}
 ];
 const known=new Map((Array.isArray(cfg.offices)?cfg.offices:[]).map(o=>[o.id,o]));
 const offices=Array.isArray(cfg.offices)?cfg.offices.slice():[];
@@ -154,4 +196,4 @@ if(!fs.existsSync(configFile)||fs.readFileSync(configFile,"utf8")!==updated){
   if(fs.existsSync(configFile)&&!fs.existsSync(backup))fs.copyFileSync(configFile,backup);
   fs.writeFileSync(configFile,updated,{mode:0o600});
 }
-console.log("恒輝 AI 總部：已建立 "+projects.length+" 個真實獨立工作空間；HQ 14 人，其餘按專業分組。");
+console.log("恒輝 AI 總部：已核對 "+projects.length+" 個獨立工作空間（含 HQ）；13 Codex 專業員工與 Gemini 影片職位按所屬專案分組。");
