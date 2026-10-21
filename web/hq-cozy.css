@@ -17,7 +17,7 @@ body.hq .roster-chip {border-radius:16px;background:#273b53;border-color:#5b7184
 body.hq .roster-chip.selected {background:#55445f;border-color:#d8b5d0;}
 body.hq .roster-chip .rs {color:#bfcbd1;}
 body.hq .hq-nav button.active {border-radius:14px;background:linear-gradient(100deg,#46526d88,#34465a77);box-shadow:inset 3px 0 #e5c99d;}
-.hq-character-knowledge {flex:none;max-height:35%;overflow:auto;border-bottom:1px solid #6b7f9555;background:#24334c;color:#e3ded7;padding:10px 16px;font-size:11px;}
+.hq-character-knowledge {flex:none;min-height:40px;max-height:260px;box-sizing:border-box;overflow:auto;border-bottom:1px solid #6b7f9555;background:#24334c;color:#e3ded7;padding:10px 16px;font-size:11px;}
 body.hq .chat:has(>.hq-character-knowledge) {grid-template-rows:auto auto minmax(0,1fr) auto auto;}
 .hq-character-knowledge>summary {cursor:pointer;color:#e5c9e0;font-weight:750;}
 .hq-knowledge-list>p {color:#b9c8d6;font-size:11px;line-height:1.7;}

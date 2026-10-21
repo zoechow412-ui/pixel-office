@@ -918,7 +918,7 @@ export class Employee extends EventEmitter {
 
   private buildPrompt(): string {
     const parts = [this.cfg.systemPrompt];
-    const knowledge = characterKnowledgePrompt(this.cfg, getSettings().offices);
+    const knowledge = characterKnowledgePrompt(this.cfg, getSettings().offices, getSettings().dataDir);
     if (knowledge) parts.push(knowledge);
     const others = this.colleagues?.list().filter((e) => e !== this) ?? [];
     if (others.length) parts.push(t("server.office.prompt", { list: others.map((e) => `- ${e.cfg.name} — ${e.cfg.role}${e.cfg.manager ? " — " + t("server.board.managerTag") : ""}`).join("\n") }));

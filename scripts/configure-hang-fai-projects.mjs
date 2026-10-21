@@ -160,7 +160,10 @@ for(const p of projects){
       // per-project custom settings, conversation history, notes and memory.
       const sourceName=meta[0].match(/^name:\s*(.+)$/m);
       if(!sourceName)throw new Error("總部員工欠缺名稱："+id);
-      const namedHeader=front[0].replace(/^name:.*$/m,"name: "+sourceName[1]);
+      let namedHeader=front[0].replace(/^name:.*$/m,"name: "+sourceName[1]);
+      const sourceModel=meta[0].match(/^model:\s*(.+)$/m);
+      // Migrate only the obsolete seeded default; keep hand-selected models.
+      if(sourceModel)namedHeader=namedHeader.replace(/^model:\s*gpt-5\.3-codex\s*$/m,"model: "+sourceModel[1]);
       const newer=namedHeader+(oldBody?oldBody+"\n\n":"")+instructions;
       if(newer!==old)fs.writeFileSync(agentFile,newer);
     }else{

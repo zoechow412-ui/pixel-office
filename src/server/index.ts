@@ -1118,11 +1118,11 @@ r.get("/employees/:id/history", (req: OReq, res) => {
 r.get("/employees/:id/knowledge", (req: OReq, res) => {
   const employee = empOf(req);
   if (!employee) return res.status(404).json({ error: "Employee not found" });
-  const projects = characterProjects(employee.cfg, settings.offices);
+  const projects = characterProjects(employee.cfg, settings.offices, settings.dataDir);
   res.json({ employee: employee.cfg.id, projects: projects.map(p => ({
     id: p.id, name: p.name, brief: p.brief,
     sources: p.sources.map(s => ({ name: s.name, excerpt: s.text })),
-    hasRoleMemory: !!p.memory,
+    hasRoleMemory: !!p.memory, tasks: p.tasks,
   })), scope: employee.cfg.officeId === "hang-fai" ? "assigned-projects" : "current-project" });
 });
 

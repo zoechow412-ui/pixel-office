@@ -19,6 +19,13 @@ try {
   fs.writeFileSync(path.join(a.cwd,'sources','redact.md'),'OPENAI_API_KEY=never-include-this-value');
   fs.writeFileSync(path.join(a.employeesDir,'plumbing','memory.md'),'Water project note.');
   const offices=[a,b];
+  const dataDir=path.join(root,'data'); fs.mkdirSync(path.join(dataDir,'water'),{recursive:true});
+  fs.writeFileSync(path.join(dataDir,'water','board.json'),JSON.stringify({tasks:[
+    {id:1,title:'Check meter',status:'doing',owner:'plumbing'},
+    {id:2,title:'Finance-only task',status:'review',owner:'finance'}]}));
+  assert.deepEqual(characterProjects({id:'plumbing',officeId:'hang-fai'},offices,dataDir)[0].tasks.map(k=>k.id),[1]);
+  assert.equal(characterProjects({id:'manager',officeId:'hang-fai'},offices,dataDir)[0].tasks.length,2);
+  assert.ok(characterKnowledgePrompt({id:'plumbing',officeId:'hang-fai'},offices,dataDir).includes('#1 doing Check meter'));
   assert.deepEqual(characterProjects({id:'manager',officeId:'hang-fai'},offices).map(p=>p.id),['water','video']);
   assert.deepEqual(characterProjects({id:'plumbing',officeId:'hang-fai'},offices).map(p=>p.id),['water']);
   assert.deepEqual(characterProjects({id:'manager',officeId:'water'},offices).map(p=>p.id),['water'],'project role stays scoped');

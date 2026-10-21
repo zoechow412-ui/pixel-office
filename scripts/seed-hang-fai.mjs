@@ -15,7 +15,8 @@ const common = [
   "公司商標及客戶原稿要原樣保留；未經批准，不得自行修改原圖、原有管線、字體、Logo、價格或合約條款。",
   "不可將密碼、API 金鑰、登入 Cookie、客戶個人資料寫進代碼、GitHub、工作記憶或聊天回覆；如需連接外部服務，只使用已授權連接及秘密管理。"
 ];
-const codex = "gpt-5.3-codex";
+// Verified with the owner's Codex model catalogue and a real read-only reply.
+const codex = process.env.HANG_FAI_CODEX_MODEL || "gpt-6.1-sol";
 const gemini = "gemini-2.5-flash";
 const roster = [
   {id:"manager",name:"01 AI 總經理",role:"統籌、質量審核及審批管理",color:"#edc47f",model:codex,manager:true,

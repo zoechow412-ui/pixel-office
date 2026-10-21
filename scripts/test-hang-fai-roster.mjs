@@ -28,7 +28,7 @@ try{
     assert.match(file, /https:\/\/github.com\/msitarzewski\/agency-agents/);
     assert.match(file,/model: /);
     if(id==="video") assert.match(file,/model: gemini-2.5-flash/);
-    else assert.match(file,/model: gpt-5.3-codex/);
+    else assert.match(file,/model: gpt-6.1-sol/);
   }
   const memory=path.join(base,"manager/memory.md");
   fs.appendFileSync(memory,"重要客戶記錄：不可清除\n");
