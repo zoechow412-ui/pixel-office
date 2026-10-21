@@ -84,10 +84,10 @@
     if (!offices.length) { host.appendChild(make("small","hq-project-loading","等待專案連線…")); return; }
     var groups = [
       ["🏢 總部", ["hang-fai"]],
-      ["🏗️ 恒輝建築／簡樸房", ["bhu-housing","construction","unibright-ops","bhu-plan-ai","estate-agency","community-housing","social-publishing","unibright-web"]],
-      ["🧱 建材／膠業／貿易", ["derfoe","wp-waterproof","firestop-ssn391","adhesives-b2b","supcon-adhesive"]],
-      ["💻 科技／餐飲／其他業務", ["driver-app","tailoring","marketing-studio","the-point","fnb-proposal","daan-daan-catering"]],
-      ["🗃️ 較早期專案（現況待核實）", ["newgen-ivf","newgensup","dod-biotech","ocean-infinity"]]
+      ["🏗️ 恒輝建築／簡樸房", ["bhu-housing","construction","plumbing-drawings","electrical-fire-plans","unibright-ops","bhu-plan-ai","estate-agency","community-housing","social-publishing","unibright-web"]],
+      ["🧱 建材／膠業／貿易", ["derfoe","wp-waterproof","firestop-ssn391","adhesives-b2b","rust-products","b2b-sales-leads","derfoe-brand-site","building-supply","supcon-adhesive"]],
+      ["💻 科技／餐飲／其他業務", ["driver-app","tailoring","marketing-studio","the-point","fnb-proposal","daan-daan-catering","ai-office-platform"]],
+      ["🗃️ 較早期專案（現況待核實）", ["newgen-ivf","newgensup","dod-biotech","ocean-infinity","private-book-art"]]
     ];
     var officesById = new Map(offices.map(function (o) { return [o.info.id,o]; }));
     var rendered = new Set();
