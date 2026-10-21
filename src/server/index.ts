@@ -514,7 +514,19 @@ if (process.env.RAILWAY_PUBLIC_DOMAIN) {
   extraHosts.push(process.env.RAILWAY_PUBLIC_DOMAIN + ":80");
 }
 const guard = createGuard({ port: settings.port, host: settings.host, extraHosts });
-app.use(guard.middleware);
+// Embedded browsers can send Origin: null when submitting the *login form*.
+// This endpoint only checks the supplied password and rate-limits attempts.
+// Preserve strict Host validation and the ordinary Origin/Fetch checks for
+// all other HTTP requests and WebSocket upgrades.
+app.use((req, res, next) => {
+  if (req.method === "POST" && req.path === "/login" &&
+      req.headers.origin === "null" &&
+      guard.hostOk(req.headers.host) &&
+      String(req.headers["content-type"] || "").startsWith("application/x-www-form-urlencoded")) {
+    return next();
+  }
+  guard.middleware(req, res, next);
+});
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 ownerAuth.routes(app);
 app.use(ownerAuth.middleware);
