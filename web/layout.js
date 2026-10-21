@@ -6,7 +6,7 @@
 // classic script (window.POLayout), the server loads the very same file to validate what a browser sends (globalThis.POLayout).
 (() => {
   const COLS = 30, ROWS = 17;
-  const MAX_EMP = 12;        // the office seats this many colleagues
+  const MAX_EMP = 16;        // Hang Fai HQ seats all 14 staff, plus 2 future hires
   const MAX_ITEMS = 240, MAX_DESKS = 16;
   const ENTRANCE = { tx: 14, ty: 16 }; // doormat at the bottom edge of the open office; new hires walk in from below
   const key = (x, y) => x + "," + y;
@@ -136,15 +136,41 @@
 
   // Desk seat tile columns / rows inside the open office (x 8..21) by head-count
   function deskLayout(n) {
+    // For 13–16 people use four columns with four rows. The original 3×4
+    // layout dropped colleagues 13+ and sometimes blocked the front door.
+    if (n >= 13) return { cols: [10, 13, 16, 19], rows: [3, 7, 11, 14] };
     const cols = n <= 2 ? [14] : n <= 4 ? [11, 17] : [10, 14, 18];
     const rowsNeeded = Math.ceil(n / cols.length);
     const rows = [[8], [5, 11], [4, 9, 14], [3, 7, 11, 15]][Math.min(rowsNeeded, 4) - 1];
     return { cols, rows };
   }
+  // Dedicated columns make each department visually legible: HQ/Business,
+  // Engineering, Compliance/Finance, IT/Supply. App and server use the same
+  // layout.js file, so seat assignments stay valid on both ends.
+  const HQ_SEATS = {
+    manager:[10,3], sales:[10,7], marketing:[10,11], video:[10,14],
+    "project-manager":[13,3], architectural:[13,7], plumbing:[13,11], "electrical-fire":[13,14],
+    researcher:[16,3], documentation:[16,7], estimating:[16,11], finance:[16,14],
+    procurement:[19,3], developer:[19,7],
+  };
   function autoDesks(n, ids = []) {
     n = Math.min(n, MAX_EMP);
     if (n < 1) return [];
     const { cols, rows } = deskLayout(n);
+    // Apply the bespoke department floor only for the complete Hang Fai HQ,
+    // not unrelated offices with a different team composition.
+    const isHq = n >= 13 && ids.includes("manager") && ids.includes("plumbing") && ids.includes("video");
+    if (isHq) {
+      const occupied = new Set();
+      return ids.slice(0, n).map((id, i) => {
+        let pos = HQ_SEATS[id];
+        if (!pos || occupied.has(pos.join(","))) {
+          pos = rows.flatMap(y => cols.map(x => [x,y])).find(p => !occupied.has(p.join(",")));
+        }
+        occupied.add(pos.join(","));
+        return { id: "desk" + i, type: "desk", tx: pos[0], ty: pos[1], emp: String(id) };
+      });
+    }
     return Array.from({ length: n }, (_, i) => ({ id: "desk" + i, type: "desk", tx: cols[i % cols.length], ty: rows[Math.floor(i / cols.length)], ...(ids[i] != null ? { emp: String(ids[i]) } : {}) }));
   }
 
