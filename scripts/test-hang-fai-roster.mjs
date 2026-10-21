@@ -38,8 +38,7 @@ try{
   const manager=fs.readFileSync(path.join(base,"manager/agent.md"),"utf8");
   assert.equal((manager.match(/## 恒輝 AI 總部工作規範/g)||[]).length,1,"SOP must not duplicate");
   const old=path.join(tmp,".pixel-office/employees/manager");
-  fs.mkdirSync(old,{recursive:true});
-  fs.renameSync(path.join(base,"manager/agent.md"),path.join(old,"agent.md"));
+  fs.renameSync(path.join(base,"manager"),old);
   run();
   assert.ok(fs.existsSync(path.join(base,"manager/agent.md")),"Migrate previously misplaced manager");
   console.log("Agency Agents HK roster tests passed: 13 Codex + 1 Gemini video.");
