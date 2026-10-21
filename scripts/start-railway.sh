@@ -30,6 +30,8 @@ if [[ ! -f .pixel-office/config.json ]]; then
   printf '{"locale":"en","host":"0.0.0.0","offices":[{"id":"hang-fai","name":"恒輝 AI 總部","cwd":"."}]}\\n' > .pixel-office/config.json
 fi
 bash .devcontainer/seed-agents.sh
+# Let the two agent CLIs be found without requiring privileged global npm installs.
+export PATH="$PWD/.office-clis/node_modules/.bin:$PATH"
 export PIXEL_OFFICE_PROJECT="$PWD"
 export PIXEL_OFFICE_ALLOW_REMOTE=1
 export HOST=0.0.0.0
