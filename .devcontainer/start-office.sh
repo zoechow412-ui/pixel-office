@@ -20,7 +20,7 @@ mkdir -p .pixel-office
 if [[ ! -f .pixel-office/config.json ]]; then
   printf '{"locale":"en","host":"127.0.0.1","port":4747,"offices":[{"id":"hang-fai","name":"恒輝 AI 總部","cwd":"."}]}\n' > .pixel-office/config.json
 fi
-bash .devcontainer/seed-agents.sh
+node scripts/seed-hang-fai.mjs
 # GitHub persists /workspaces between codespace restarts. Avoid duplicates.
 if [[ -f /tmp/hang-fai-office.pid ]] && kill -0 "$(cat /tmp/hang-fai-office.pid)" 2>/dev/null; then
   exit 0
