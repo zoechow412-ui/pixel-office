@@ -30,6 +30,7 @@ if [[ ! -f .pixel-office/config.json ]]; then
   printf '{"locale":"en","host":"0.0.0.0","offices":[{"id":"hang-fai","name":"恒輝 AI 總部","cwd":"."}]}\\n' > .pixel-office/config.json
 fi
 node scripts/seed-hang-fai.mjs
+node scripts/configure-hang-fai-projects.mjs
 # Let the two agent CLIs be found without requiring privileged global npm installs.
 export PATH="$PWD/.office-clis/node_modules/.bin:$PATH"
 export PIXEL_OFFICE_PROJECT="$PWD"
