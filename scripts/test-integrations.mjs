@@ -17,7 +17,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const I = await import(path.join(root, "dist/server/integrations.js"));
+const I = await import(new URL('../dist/server/integrations.js', import.meta.url));
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "po-integrations-"));
 I.initIntegrations(dir);
 
@@ -149,6 +149,11 @@ await assert.rejects(() => I.saveIntegration("nope", { token: "x" }));
 const origin = "http://localhost:4747";
 const { url: authUrl } = await I.startOAuth("mockoauth", origin);
 const au = new URL(authUrl);
+// Reload the integration module to emulate a server restart while the owner
+// is signing in. The callback must retain the original PKCE verifier.
+const restarted = await import(new URL('../dist/server/integrations.js?restart-test', import.meta.url));
+restarted.initIntegrations(dir);
+restarted.extraCatalog.push(...I.extraCatalog);
 assert.equal(au.origin + au.pathname, `${base}/authorize`);
 assert.equal(au.searchParams.get("client_id"), "client-1", "registered itself with the service");
 assert.equal(au.searchParams.get("redirect_uri"), `${origin}/api/integrations/oauth/callback`);
@@ -158,7 +163,7 @@ await assert.rejects(() => I.startOAuth("mock", origin), "not every server offer
 // the wrong state, or a state twice, is refused
 assert.equal((await I.finishOAuth("nope", "c", undefined)).ok, false);
 codes.set("code-1", { challenge: au.searchParams.get("code_challenge") });
-const back = await I.finishOAuth(au.searchParams.get("state"), "code-1", undefined);
+const back = await restarted.finishOAuth(au.searchParams.get("state"), "code-1", undefined);
 assert.deepEqual([back.id, back.ok], ["mockoauth", true], "the callback finishes the connection and checks it");
 assert.equal((await I.finishOAuth(au.searchParams.get("state"), "code-1", undefined)).ok, false, "a state works once");
 let v = I.listIntegrations().find((x) => x.id === "mockoauth");

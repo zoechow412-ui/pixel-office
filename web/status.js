@@ -1,7 +1,6 @@
 // Status list: a compact one-row-per-employee view of the roster (toggle ☰ / ▦, remembered in this browser). Shows
 // everyone, also those beyond the 12 desks the office has room for, with task, time on it, context, spend and unread.
 window.statusUI = (() => {
-  const DESKS = 12; // office.js seats this many
   const KEY = "po.rosterList";
   let list = false;
   try { list = localStorage.getItem(KEY) === "1"; } catch {}
@@ -25,11 +24,12 @@ window.statusUI = (() => {
   function decorate(el) {
     el.classList.remove("list");
     const n = cur()?.employees.size || 0;
-    if (n > DESKS) {
+    const missing = office.scene ? office.scene.missing.length : 0;
+    if (missing > 0) {
       const h = document.createElement("button");
       h.type = "button"; h.className = "roster-chip roster-more";
-      h.textContent = t("ui.status.noDesk", { n: n - DESKS });
-      h.title = t("ui.status.noDeskTip");
+      h.textContent = t("ui.status.noDesk", { n: missing });
+      h.title = "目前場景有 " + (n - missing) + " 個員工座位；按此檢視全部員工。";
       h.onclick = () => toggle(true);
       el.appendChild(h);
     }

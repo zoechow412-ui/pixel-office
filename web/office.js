@@ -206,6 +206,7 @@ class Office {
     for (const e of this.emps) {
       const el = document.createElement("div");
       el.className = "label";
+      el.title = e.name + " · " + e.role;
       el.textContent = e.name; // names and roles are the boss's free text: never markup
       const small = document.createElement("small");
       small.textContent = e.role;
@@ -628,6 +629,7 @@ class Office {
     const isHq = POLayout.isHangFaiTeam(this.rosterIds);
     if (isHq) {
       b.save();
+      drawHqCharm(b, t);
       for (const wing of POLayout.HQ_WINGS) {
         const r=ROOMS.find(x=>x.key===wing.key);
         if(!r)continue;
@@ -733,6 +735,41 @@ function traitOf(e) {
   return e.trait;
 }
 const lifeStrings = () => (window.PO && window.PO.strings && window.PO.strings.ui && window.PO.strings.ui.life) || {};
+function drawHqCharm(b, t) {
+  // A flat woven rug and wall fairy lights: purely decorative, no furniture,
+  // seats, walkable cells or click coordinates are changed.
+  const x = 10 * TILE, y = 10 * TILE, w = 10 * TILE, h = 5 * TILE;
+  b.fillStyle = "#b79283"; b.fillRect(x + 6, y + 8, w - 12, h - 12);
+  b.fillStyle = "#ecd4bd"; b.fillRect(x, y, w, h - 8);
+  b.fillStyle = "#d6ac9d"; b.fillRect(x + 5, y + 5, w - 10, h - 18);
+  b.fillStyle = "#e7c8b2"; b.fillRect(x + 10, y + 10, w - 20, h - 28);
+  for (let px = x + 8; px < x + w; px += 12) {
+    b.fillStyle = "#f4e5d1"; b.fillRect(px, y - 4, 4, 5); b.fillRect(px, y + h - 9, 4, 5);
+  }
+  // Little cloud stitched into the rug, with blush and sleepy eyes.
+  const cx = x + w / 2, cy = y + 54;
+  b.fillStyle = "#fff1d9";
+  b.fillRect(cx - 48, cy - 10, 96, 32); b.fillRect(cx - 36, cy - 23, 72, 15);
+  b.fillRect(cx - 20, cy - 31, 40, 12);
+  b.fillStyle = "#735d60"; b.fillRect(cx - 23, cy + 1, 8, 3); b.fillRect(cx + 15, cy + 1, 8, 3);
+  b.fillRect(cx - 3, cy + 9, 6, 3);
+  b.fillStyle = "#e5aa9e"; b.fillRect(cx - 32, cy + 8, 12, 5); b.fillRect(cx + 20, cy + 8, 12, 5);
+  b.textAlign = "center"; b.font = "bold 13px Arial,sans-serif";
+  b.fillStyle = "#866b67"; b.fillText("A LITTLE OFFICE, BIG IDEAS", cx, y + 110);
+  const stars = [[x+30,y+31],[x+w-33,y+38],[x+56,y+110],[x+w-50,y+106]];
+  for (const [sx,sy] of stars) {
+    b.fillStyle = "#fff0ca";
+    b.fillRect(sx-5,sy-1,11,3); b.fillRect(sx-1,sy-5,3,11);
+  }
+  b.strokeStyle = "#8a9aa8"; b.lineWidth = 1;
+  b.beginPath(); b.moveTo(8*TILE, 2*TILE+2); b.quadraticCurveTo(15*TILE,3*TILE,22*TILE,2*TILE+2); b.stroke();
+  for (let i=0; i<12; i++) {
+    const u=i/11, lx=(8+14*u)*TILE, ly=2*TILE+2+Math.sin(Math.PI*u)*16;
+    const glow = REDUCED_MOTION.matches ? 0.75 : 0.65 + Math.sin(t/1800+i)*0.2;
+    b.globalAlpha=glow; b.fillStyle=i%3===0?"#e8b7ac":i%3===1?"#f5dfa7":"#bcd9c2";
+    b.fillRect(lx-2,ly,5,7); b.globalAlpha=1;
+  }
+}
 function lifePick(arr, fallback = "") { return Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : fallback; }
 // how long a balloon stays up: longer sentences need longer to read
 const lifeMs = (text) => Math.min(5200, 1600 + String(text || "").length * 55);

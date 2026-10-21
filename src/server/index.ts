@@ -21,6 +21,7 @@ import { CATEGORIES, initIntegrations, listIntegrations, saveIntegration, checkI
 import { CLAUDE_MODELS, PROVIDERS, activeModels, isActiveModel, initProviders, providersReady, providerStatuses, updateProvider, installProvider, loginProvider, refreshProvider, canInstall, canLogin, type ProviderId } from "./providers.js";
 import { createGuard, isLoopbackHost } from "./security.js";
 import { createOwnerAuth, allowEmbeddedOwnerRequest } from "./owner-auth.js";
+import { characterProjects } from "./character-knowledge.js";
 import { acquireLock } from "./lock.js";
 import { writeFileAtomicSync } from "./fsutil.js";
 import { Ledger, dayKey, type Cap } from "./ledger.js";
@@ -1112,6 +1113,17 @@ r.get("/employees/:id/history", (req: OReq, res) => {
   const limit = req.query.limit === undefined ? 200 : Number(req.query.limit);
   if (!Number.isFinite(before) || !Number.isInteger(limit) || limit < 1 || limit > 500) return res.status(400).json({ error: t("server.historyQuery") });
   res.json(o.store.readArchive(e.cfg.id, before, limit));
+});
+
+r.get("/employees/:id/knowledge", (req: OReq, res) => {
+  const employee = empOf(req);
+  if (!employee) return res.status(404).json({ error: "Employee not found" });
+  const projects = characterProjects(employee.cfg, settings.offices);
+  res.json({ employee: employee.cfg.id, projects: projects.map(p => ({
+    id: p.id, name: p.name, brief: p.brief,
+    sources: p.sources.map(s => ({ name: s.name, excerpt: s.text })),
+    hasRoleMemory: !!p.memory,
+  })), scope: employee.cfg.officeId === "hang-fai" ? "assigned-projects" : "current-project" });
 });
 
 r.get("/employees/:id/detail", (req: OReq, res) => {

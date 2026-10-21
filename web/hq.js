@@ -35,6 +35,39 @@
     var x = el(id);
     if (x) x.textContent = String(value);
   }
+  var knowledgeKey = "", knowledgeAt = 0;
+  window.addEventListener("hq-person-selected", function (event) {
+    var p=event.detail, key=p.office+":"+p.id;
+    if(key===knowledgeKey && Date.now()-knowledgeAt<10000) return;
+    knowledgeKey=key; knowledgeAt=Date.now();
+    var panel=el("hqCharacterKnowledge");
+    if(!panel) {
+      panel=make("details","hq-character-knowledge"); panel.id="hqCharacterKnowledge";
+      var chat=el("chat"), head=chat && chat.querySelector(".chat-head");
+      if(!head)return; head.after(panel);
+    }
+    panel.replaceChildren(make("summary","","讀取人物專案資料…"));
+    fetch("/api/offices/"+encodeURIComponent(p.office)+"/employees/"+encodeURIComponent(p.id)+"/knowledge")
+      .then(function(r){if(!r.ok)throw new Error("unavailable");return r.json();})
+      .then(function(data){
+        if(knowledgeKey!==key)return;
+        var count=data.projects.length, sources=data.projects.reduce(function(n,p){return n+p.sources.length;},0);
+        panel.replaceChildren(make("summary","","人物知識 · "+count+" 個專案 · "+sources+" 份來源摘要"));
+        var body=make("div","hq-knowledge-list");
+        body.appendChild(make("p","","直接問呢位同事即可；會按職責參考以下專案。來源摘要唔代表原稿已全部匯入。"));
+        data.projects.forEach(function(project){
+          var item=make("details","hq-knowledge-project");
+          item.appendChild(make("summary","",project.name));
+          item.appendChild(make("p","",project.brief || "未有專案說明"));
+          project.sources.forEach(function(s){
+            item.appendChild(make("b","",s.name)); item.appendChild(make("p","",s.excerpt));
+          });
+          if(!project.sources.length)item.appendChild(make("small","","已有專案背景；原有對話／檔案尚未接入。"));
+          body.appendChild(item);
+        });
+        panel.appendChild(body);
+      }).catch(function(){if(knowledgeKey===key)panel.replaceChildren(make("summary","","人物資料暫時無法讀取"));});
+  });
   function action(which) {
     if (which === "hire") {
       var hire = el("hireLink");

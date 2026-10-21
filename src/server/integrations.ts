@@ -9,6 +9,7 @@ import { auth, type OAuthClientProvider } from "@modelcontextprotocol/sdk/client
 import type { OAuthClientInformationMixed, OAuthClientMetadata, OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { PKG_ROOT } from "./config.js";
 import { isObject as isObj, readJsonSafe } from "./fsutil.js";
+import { OAuthFlows, type OAuthFlow } from "./oauth-flows.js";
 const isObject = (v: unknown): v is Record<string, any> => isObj(v); // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // Integrations: the market of MCP servers the boss can add (a catalogue in catalog/integrations.json, plus servers of their own) and give
@@ -80,7 +81,11 @@ interface OwnClient { id: string; secret?: string }
 interface File { v: 1; items: Record<string, Stored>; custom: Record<string, CustomDef>; clients: Record<string, OwnClient> }
 
 let file = "";
-export function initIntegrations(dataDir: string) { file = path.join(dataDir, "integrations.json"); }
+let flows: OAuthFlows;
+export function initIntegrations(dataDir: string) {
+  file = path.join(dataDir, "integrations.json");
+  flows = new OAuthFlows(path.join(dataDir, "oauth-flows"));
+}
 
 function customEntry(id: string, c: CustomDef): CatalogEntry {
   return { id, name: c.name, category: "custom", url: c.url, desc: { en: c.desc || new URL(c.url).host }, oauth: c.oauth, token: c.token, open: (!c.oauth && !c.token) || undefined, custom: true };
@@ -154,9 +159,7 @@ function withTimeout<T>(p: Promise<T>, ms = 15000): Promise<T> {
 
 // ---- OAuth: sign in with the account ----
 // A flow is pending from "Connect" until the service sends the browser back to /api/integrations/oauth/callback with a code.
-interface Flow { id: string; state: string; redirectUrl: string; verifier?: string; authUrl?: URL; at: number }
-const flows = new Map<string, Flow>();
-const FLOW_TTL_MS = 10 * 60e3;
+interface Flow extends OAuthFlow { authUrl?: URL }
 const oauthClientMeta = (redirectUrl: string): OAuthClientMetadata => ({ client_name: "Pixel Office (local)", redirect_uris: [redirectUrl], grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], token_endpoint_auth_method: "none" });
 
 class Provider implements OAuthClientProvider {
@@ -182,28 +185,28 @@ class Provider implements OAuthClientProvider {
     else if (scope === "tokens") update(this.id, (s) => ({ ...s, oauth: s.oauth ? { ...s.oauth, tokens: undefined } : undefined }));
   }
 }
-const sweepFlows = () => { for (const [k, f] of flows) if (Date.now() - f.at > FLOW_TTL_MS) flows.delete(k); };
 
 // "Connect": returns where to send the browser (the service's sign-in page).
 export async function startOAuth(id: string, origin: string): Promise<{ url: string }> {
   const e = lookup(id);
   if (!e?.oauth) throw new Error("noOauth");
   if (e.ownClient && !read().clients[e.ownClient]) throw new Error("noClient");
-  sweepFlows();
+  flows.sweep();
   const redirectUrl = `${origin}/api/integrations/oauth/callback`;
   const flow: Flow = { id, state: crypto.randomBytes(24).toString("hex"), redirectUrl, at: Date.now() };
-  flows.set(flow.state, flow);
   const r = await withTimeout(auth(new Provider(id, redirectUrl, flow), { serverUrl: e.url }), 30000);
-  if (r === "AUTHORIZED") { flows.delete(flow.state); await finishConnection(id, "oauth"); return { url: "" }; } // (still signed in from before)
+  if (r === "AUTHORIZED") { await finishConnection(id, "oauth"); return { url: "" }; } // (still signed in from before)
   if (!flow.authUrl) throw new Error("noAuthUrl");
+  // Persist only once discovery and PKCE setup have succeeded, before the
+  // browser leaves. Never persist tokens or the authorization URL here.
+  flows.save({ id, state: flow.state, redirectUrl, verifier: flow.verifier, at: flow.at });
   return { url: flow.authUrl.toString() };
 }
 // The browser is back from the sign-in page. Returns which integration it was and how it went.
 export async function finishOAuth(state: string, code: string | undefined, error: string | undefined): Promise<{ id?: string; ok: boolean; error?: string }> {
-  sweepFlows();
-  const flow = flows.get(state);
+  flows.sweep();
+  const flow = flows.consume(state);
   if (!flow) return { ok: false, error: "expired" };
-  flows.delete(state);
   if (error || !code) return { id: flow.id, ok: false, error: `denied:${String(error ?? "no code").slice(0, 120)}` };
   const e = lookup(flow.id);
   if (!e) return { ok: false, error: "unknown" };

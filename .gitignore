@@ -7,5 +7,8 @@ data/
 # Codespaces AI Office runtime state: chat history, keys, employee memories.
 .pixel-office/
 
+# Runtime-generated employee copies, not source templates or imported knowledge.
+.claude/agents/
+
 # AI provider CLI binaries installed during Railway image build
 .office-clis/

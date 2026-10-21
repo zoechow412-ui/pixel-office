@@ -26,6 +26,7 @@ import { listSkills, listProjectSkills } from "./agents.js";
 import { claudeSession, readOnlySession } from "./integrations.js";
 import { fromClaudeRateLimit, fromClaudeUsage, fromCodexThread, claudeUsageDue } from "./quota.js";
 import type { CostKind } from "./ledger.js";
+import { characterKnowledgePrompt } from "./character-knowledge.js";
 
 export type Status = "idle" | "working" | "waiting" | "error" | "sick";
 
@@ -917,6 +918,8 @@ export class Employee extends EventEmitter {
 
   private buildPrompt(): string {
     const parts = [this.cfg.systemPrompt];
+    const knowledge = characterKnowledgePrompt(this.cfg, getSettings().offices);
+    if (knowledge) parts.push(knowledge);
     const others = this.colleagues?.list().filter((e) => e !== this) ?? [];
     if (others.length) parts.push(t("server.office.prompt", { list: others.map((e) => `- ${e.cfg.name} — ${e.cfg.role}${e.cfg.manager ? " — " + t("server.board.managerTag") : ""}`).join("\n") }));
     if (this.colleagues) parts.push(t(this.cfg.manager ? "server.board.promptManager" : "server.board.prompt"));

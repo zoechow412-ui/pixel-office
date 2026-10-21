@@ -1,5 +1,7 @@
 # 恒輝 AI 總部 · Hang Fai AI HQ
 
+> 2026-10-22 更新：現有14人物、四部門座位及32工作空間；新增人物按職責讀取專案知識、來源摘要核對與溫暖像素辦公室美化。已通過本機測試，尚未完成正式Vercel遷移及真實模型回覆驗收。詳見 [人物知識與部署狀態](docs/CHARACTER-KNOWLEDGE.md)。下文第一版／第二階段記錄屬歷史背景。
+
 這個分支在原版 [Pixel Office](https://github.com/basriayaz/pixel-office) 基礎上，加入深藍金色 AI 工作指揮台。沿用原本的 AI 員工、任務板、會議、WebSocket 同 Codex／Gemini 執行功能。
 
 ## 現時已完成（第一版）

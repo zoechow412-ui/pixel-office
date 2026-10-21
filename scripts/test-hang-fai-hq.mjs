@@ -20,8 +20,8 @@ assert.ok(start.includes("PIXEL_OFFICE_ALLOWED_HOSTS"), "Private port proxy must
 assert.ok(start.includes("PIXEL_OFFICE_PROJECT"), "Server must use a project-scoped workspace");
 
 const index = read("web/index.html");
-assert.match(index, /href="hq.css"/);
-assert.match(index, /src="hq.js"/);
+assert.match(index, /href="hq\.css(?:\?[^"\s]+)?"/);
+assert.match(index, /src="hq\.js(?:\?[^"\s]+)?"/);
 for (const id of ["hqTeam", "hqTasks", "hqCountPeople", "hqCountWorking", "hqCountAction"]) {
   assert.ok(index.includes('id="' + id + '"'), "Missing UI target " + id);
 }
