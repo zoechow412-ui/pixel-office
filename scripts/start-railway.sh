@@ -27,12 +27,27 @@ else
   exit 1
 fi
 if [[ ! -f .pixel-office/config.json ]]; then
-  printf '{"locale":"en","host":"0.0.0.0","offices":[{"id":"hang-fai","name":"恒輝 AI 總部","cwd":"."}]}\\n' > .pixel-office/config.json
+  printf '%s\\n' '{"locale":"en","host":"0.0.0.0","offices":[{"id":"hang-fai","name":"恒輝 AI 總部","cwd":"."}]}' > .pixel-office/config.json
 fi
 node scripts/seed-hang-fai.mjs
 node scripts/configure-hang-fai-projects.mjs
+# Provider auth and task history must survive Railway container redeploys.
+# All secrets stay in Railway variables or the attached 0600 private volume,
+# never in Git, the public web directory, or an employee's prompt.
+export CODEX_HOME="$state/codex-auth"
+mkdir -p "$CODEX_HOME"
+chmod 700 "$CODEX_HOME"
 # Let the two agent CLIs be found without requiring privileged global npm installs.
 export PATH="$PWD/.office-clis/node_modules/.bin:$PATH"
+if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  # Current Codex CLI only accepts the secret through stdin for API-key login.
+  # Avoid command-line arguments / echoed output / Git-tracked credentials.
+  if ! printf '%s' "$OPENAI_API_KEY" | codex login --with-api-key >/dev/null 2>&1; then
+    echo "Codex API 授權失敗，請檢查 Railway 私密變數及 API 帳戶。" >&2
+    exit 1
+  fi
+fi
+# GEMINI_API_KEY is read by the existing provider engine at runtime.
 export PIXEL_OFFICE_PROJECT="$PWD"
 export PIXEL_OFFICE_ALLOW_REMOTE=1
 export HOST=0.0.0.0
