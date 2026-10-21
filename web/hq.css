@@ -229,3 +229,86 @@ body.hq .chat-head { background: #1a2d49; }
 @media (prefers-reduced-motion:reduce) {
   .hq-nav button {transition:none}
 }
+
+/* Hang Fai 14-staff large office + distinct business projects. */
+@media (min-width: 900px) {
+  body.hq { grid-template-columns: 188px minmax(0, 1fr) 250px; }
+  body.hq .hq-inspector { padding: 20px 12px; }
+  body.hq .stage { padding: 83px 14px 18px; }
+}
+body.hq .stage {
+  overflow: auto;
+  justify-content: flex-start;
+  scrollbar-width: thin;
+  scroll-behavior: smooth;
+}
+body.hq .office-wrap { flex: none; margin-left: auto; margin-right: auto; }
+body.hq .hq-sidebar {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  gap: 15px;
+}
+.hq-project-section {
+  margin: 2px 0 0;
+  border-top: 1px solid rgba(182,207,239,.16);
+  padding: 16px 4px 12px;
+}
+.hq-project-section .hq-nav-label { padding-left: 6px; }
+.hq-project-nav { display: grid; gap: 5px; margin-top: 10px; }
+.hq-project-nav button {
+  display: flex; gap: 9px; width: 100%; align-items: center;
+  color: #bed0e9; text-align: left;
+  border: 1px solid transparent; border-radius: 10px;
+  background: transparent; padding: 9px 8px; cursor: pointer;
+  font: 600 10px/1.5 "Noto Sans TC", "Manrope", sans-serif;
+}
+.hq-project-nav button:hover { background: rgba(255,255,255,.06); color: #fff; }
+.hq-project-nav button.selected, .hq-project-nav button[aria-current="page"] {
+  background: rgba(224,179,107,.14); color: #f5d798;
+  border-color: rgba(224,179,107,.3);
+}
+.hq-project-nav button .hq-project-emoji { flex: none; font-size: 15px; }
+.hq-project-loading,.hq-project-tip { display: block; color: #879cbb; font-size: 10px; line-height: 1.5; margin: 8px 5px; }
+.hq-sidebar-bottom { margin-top: auto; }
+.hq-view-tools {
+  z-index: 3; display: flex; align-items:center; gap: 8px;
+  flex: none; width: 100%; max-width: 1200px; padding: 0 4px;
+  margin: 0 auto 12px; justify-content: flex-end;
+}
+.hq-floor-indicator {
+  margin-right: auto; color: #aabeda;
+  font: 800 10px "Manrope", sans-serif; letter-spacing: .12em;
+}
+.hq-view-tools button {
+  background: rgba(41,66,101,.85); border: 1px solid rgba(158,192,231,.32);
+  color: #f5e2be; border-radius: 8px; cursor: pointer;
+  font: 750 12px "Noto Sans TC",sans-serif; padding: 7px 13px;
+}
+.hq-view-tools button:hover {background:#395579;border-color:#e2bd78;}
+.hq-team { gap: 6px; }
+.hq-dept-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 10px 5px 3px; margin-top: 6px; font: 850 10px "Manrope","Noto Sans TC",sans-serif;
+  letter-spacing:.035em; color:var(--department);
+  border-top:1px solid rgba(160,192,229,.1);
+}
+.hq-dept-head small {color:#8199b9; font-size:9px}
+.hq-person {padding:8px;}
+.hq-person .hq-avatar {width:29px;height:29px; border-radius:8px;background:var(--department);color:#13233a;}
+.hq-person-details b {font-size:11px;}
+.hq-person-details small {font-size:9px;}
+body.hq .label {font-size:10px;}
+@media (max-width: 1180px) {
+  .hq-project-section {padding-top:10px}
+  .hq-project-nav button{padding:7px 5px}
+}
+@media (max-width: 899px) {
+  body.hq .hq-sidebar { overflow-y: auto; }
+  .hq-project-section .hq-nav-label,.hq-project-tip,.hq-project-nav button span:not(.hq-project-emoji) {display:none}
+  .hq-project-nav button {justify-content:center;padding:8px 0;font-size:14px;}
+  body.hq .stage {padding-top:83px}
+}
+@media (max-width: 540px) {
+  .hq-floor-indicator {font-size:8px}
+  .hq-view-tools button {padding:6px 9px}
+}
