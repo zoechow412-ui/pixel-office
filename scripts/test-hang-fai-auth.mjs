@@ -60,7 +60,7 @@ try {
   assert.equal((await request("/secret",{cookie:cookie.replace(/.$/,"0")})).code,401);
   assert.equal((await socket()).code,401);
   assert.equal((await socket(cookie)).connected,true);
-  assert.equal((await request("/secret",{cookie,origin:"https://another.example"})).code,403);
+  assert.equal((await request("/logout",{method:"POST",cookie,origin:"https://another.example"})).code,403);
   console.log("Remote owner authentication / WebSocket tests passed.");
 } finally {
   for(const c of wss.clients) c.terminate();
