@@ -108,8 +108,16 @@ class Office {
     if (next === this.theme) return;
     this.theme = next;
     this.buildStatic();
-    for (const { r, el } of this.roomEls) el.textContent = roomName(this.theme, r.key);
+    for (const { r, el } of this.roomEls) el.textContent = this.divisionName(r.key);
     this.labelsEl.classList.toggle("dark", !!(THEMES[this.theme] || {}).dark);
+  }
+
+  divisionName(roomKey) {
+    if (POLayout.isHangFaiTeam(this.rosterIds)) {
+      const zone=POLayout.HQ_WINGS.find(w=>w.key===roomKey);
+      if(zone)return zone.title;
+    }
+    return roomName(this.theme,roomKey);
   }
 
   // ---------- layout ----------
@@ -191,7 +199,7 @@ class Office {
     this.roomEls = ROOMS.map((r) => {
       const el = document.createElement("div");
       el.className = "room-label";
-      el.textContent = roomName(this.theme, r.key);
+      el.textContent = this.divisionName(r.key);
       this.labelsEl.appendChild(el);
       return { r, el };
     });
@@ -615,24 +623,31 @@ class Office {
     const b = this.b;
     const dim = this.editing ? this.editorDim : null; // the piece being dragged stays faded where it was
     drawFloors(b, this.theme, this.rugItems, dim);
-    // The Hang Fai HQ has one visible floor for all 14 people. Division rugs
-    // identify the four neighbouring desk columns without changing walkable tiles.
-    if (this.rosterIds.length >= 13 && this.rosterIds.includes("plumbing")) {
-      const zones = [
-        [9, "#eac47c", "EXEC / SALES"],
-        [12, "#62aee4", "ENGINEERING"],
-        [15, "#b6a0e9", "COMPLIANCE"],
-        [18, "#72d9c4", "DIGITAL / OPS"]
-      ];
+    // Unlike the old four vertical stripes, these are four *existing walled
+    // rooms* with distinct real desks, travel routes and room name plates.
+    const isHq = POLayout.isHangFaiTeam(this.rosterIds);
+    if (isHq) {
       b.save();
-      for (const [x, color, label] of zones) {
-        b.globalAlpha = 0.1; b.fillStyle = color;
-        b.fillRect(x*TILE, 2*TILE, 3*TILE, 15*TILE);
-        b.globalAlpha = 0.56; b.fillStyle = color;
-        b.fillRect(x*TILE, 2*TILE, 3*TILE, 3);
-        b.globalAlpha = 1; b.fillStyle = "#20324b";
-        b.font = "bold 8px sans-serif"; b.textAlign = "center";
-        b.fillText(label, (x+1.5)*TILE, 2*TILE+13, 3*TILE-2);
+      for (const wing of POLayout.HQ_WINGS) {
+        const r=ROOMS.find(x=>x.key===wing.key);
+        if(!r)continue;
+        const x=r.x0*TILE,y=r.y0*TILE,w=(r.x1-r.x0+1)*TILE,h=(r.y1-r.y0+1)*TILE;
+        b.fillStyle=wing.color; b.globalAlpha=.23;
+        b.fillRect(x+2,y+2,w-4,h-4);
+        b.globalAlpha=.72;
+        b.fillRect(x+3,y+3,w-6,5);
+        b.globalAlpha=.36;
+        b.fillRect(x+3,y+h-8,w-6,4);
+        b.globalAlpha=1;
+        // Raised enamel division signage, placed near each room's ceiling.
+        const title=wing.title+"  ·  "+wing.count;
+        b.font='bold 10px Arial,sans-serif';
+        b.textAlign='center'; b.textBaseline='middle';
+        const plaqueW=Math.min(w-10,Math.ceil(b.measureText(title).width+18));
+        const plaqueX=x+(w-plaqueW)/2;
+        b.fillStyle="#182b43";b.fillRect(plaqueX,y+11,plaqueW,22);
+        b.fillStyle=wing.color;b.fillRect(plaqueX,y+11,plaqueW,3);
+        b.fillStyle="#f9fbff";b.fillText(title,x+w/2,y+25,plaqueW-7);
       }
       b.restore();
     }
