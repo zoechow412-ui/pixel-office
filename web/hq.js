@@ -59,7 +59,8 @@
   var projectIcons = {
     "hang-fai":"🏢", "bhu-housing":"🏗️", "construction":"🔧",
     "derfoe":"🧱", "driver-app":"🚗", "tailoring":"👔",
-    "marketing-studio":"🎬"
+    "marketing-studio":"🎬",
+    "unibright-ops":"📊", "bhu-plan-ai":"📐", "wp-waterproof":"💧", "firestop-ssn391":"🔥", "adhesives-b2b":"🧴", "estate-agency":"🗺️", "community-housing":"🤝", "social-publishing":"📣", "supcon-adhesive":"🏭", "unibright-web":"🌐", "the-point":"🍽️", "fnb-proposal":"🥢", "daan-daan-catering":"🥣", "newgen-ivf":"🧬", "newgensup":"💊", "dod-biotech":"🧾", "ocean-infinity":"🎪"
   };
   var departmentMap = {
     manager:["Executive & Growth","#dcb777"], sales:["Executive & Growth","#dcb777"],
@@ -81,11 +82,20 @@
     lastProjectKey = key;
     host.replaceChildren();
     if (!offices.length) { host.appendChild(make("small","hq-project-loading","等待專案連線…")); return; }
-    offices.forEach(function (item) {
+    var groups = [
+      ["🏢 總部", ["hang-fai"]],
+      ["🏗️ 恒輝建築／簡樸房", ["bhu-housing","construction","unibright-ops","bhu-plan-ai","estate-agency","community-housing","social-publishing","unibright-web"]],
+      ["🧱 建材／膠業／貿易", ["derfoe","wp-waterproof","firestop-ssn391","adhesives-b2b","supcon-adhesive"]],
+      ["💻 科技／餐飲／其他業務", ["driver-app","tailoring","marketing-studio","the-point","fnb-proposal","daan-daan-catering"]],
+      ["🗃️ 較早期專案（現況待核實）", ["newgen-ivf","newgensup","dod-biotech","ocean-infinity"]]
+    ];
+    var officesById = new Map(offices.map(function (o) { return [o.info.id,o]; }));
+    var rendered = new Set();
+    function appendProject(item,target) {
       var id = item.info.id;
+      rendered.add(id);
       var btn = make("button","hq-project-choice" + (state.office === id ? " selected" : ""));
-      btn.type = "button";
-      btn.title = item.info.name;
+      btn.type = "button"; btn.title = item.info.name;
       if (state.office === id) btn.setAttribute("aria-current","page");
       btn.appendChild(make("span","hq-project-emoji",projectIcons[id] || "📁"));
       btn.appendChild(make("span","",item.info.name.replace(/^[^A-Za-z\u4E00-\u9FFF]+/u,"")));
@@ -93,12 +103,33 @@
         if (typeof showOffice !== "function") return;
         showOffice(id);
         window.history.replaceState(null, "", "/?office=" + encodeURIComponent(id));
-        lastProjectKey = null;
-        lastTeamKey = null; lastTaskKey = null;
+        lastProjectKey = null; lastTeamKey = null; lastTaskKey = null;
         renderProjects(); update();
       });
-      host.appendChild(btn);
+      target.appendChild(btn);
+    }
+    groups.forEach(function (def,i) {
+      var list=def[1].map(function(id){return officesById.get(id);}).filter(Boolean);
+      if (!list.length) return;
+      var detail=make("details","hq-project-group");
+      detail.open = list.some(function(x){return x.info.id===state.office;}) || i===0 || i===1;
+      var title=make("summary","hq-project-group-title");
+      title.appendChild(make("span","",def[0]));
+      title.appendChild(make("small","",String(list.length)));
+      detail.appendChild(title);
+      var body=make("div","hq-project-group-list");
+      list.forEach(function(item){appendProject(item,body);});
+      detail.appendChild(body); host.appendChild(detail);
     });
+    var uncategorized=offices.filter(function(x){return !rendered.has(x.info.id);});
+    if (uncategorized.length) {
+      var other=make("details","hq-project-group");
+      other.open=uncategorized.some(function(x){return x.info.id===state.office;});
+      other.appendChild(make("summary","hq-project-group-title","📁 其他專案 · "+uncategorized.length));
+      var list=make("div","hq-project-group-list");
+      uncategorized.forEach(function(item){appendProject(item,list);});
+      other.appendChild(list);host.appendChild(other);
+    }
   }
   function zoomOffice(delta, reset) {
     if (typeof office === "undefined" || !office || typeof office.fit !== "function") return;
