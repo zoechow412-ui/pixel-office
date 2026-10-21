@@ -23,6 +23,10 @@ jobs:
         run: node scripts/test-hang-fai-hq.mjs
       - name: Validate Agency Agents engineering roster
         run: node scripts/test-hang-fai-roster.mjs
+      - name: Verify larger departmental floor and seating
+        run: node scripts/test-hang-fai-layout.mjs
+      - name: Verify separate business project offices
+        run: node scripts/test-hang-fai-projects.mjs
       - name: Verify owner login and WebSocket authentication
         run: node scripts/test-hang-fai-auth.mjs
       - name: Locale files are valid JSON with the same keys
