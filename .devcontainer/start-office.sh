@@ -10,7 +10,7 @@ PORT=4747
 if [[ -n "${CODESPACE_NAME:-}" ]]; then
   forwarding_domain="${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
   forwarded_host="${CODESPACE_NAME}-${PORT}.${forwarding_domain}"
-  export PIXEL_OFFICE_ALLOWED_HOSTS="${forwarded_host}:443"
+  export PIXEL_OFFICE_ALLOWED_HOSTS="${forwarded_host}:80,${forwarded_host}:443"
 fi
 export HOST=127.0.0.1
 export PORT=4747
