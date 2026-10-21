@@ -21,6 +21,8 @@ jobs:
       - run: npm run build
       - name: Validate Hang Fai HQ private preview and agent setup
         run: node scripts/test-hang-fai-hq.mjs
+      - name: Validate Agency Agents engineering roster
+        run: node scripts/test-hang-fai-roster.mjs
       - name: Verify owner login and WebSocket authentication
         run: node scripts/test-hang-fai-auth.mjs
       - name: Locale files are valid JSON with the same keys
