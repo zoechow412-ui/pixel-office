@@ -54,6 +54,60 @@
   document.querySelectorAll("[data-hq-action]").forEach(function (btn) {
     btn.addEventListener("click", function () { action(btn.dataset.hqAction); });
   });
+  // Business offices are real Pixel Office offices, each with its own board,
+  // conversation history and employee memory. Never simulate project progress.
+  var projectIcons = {
+    "hang-fai":"🏢", "bhu-housing":"🏗️", "construction":"🔧",
+    "derfoe":"🧱", "driver-app":"🚗", "tailoring":"👔",
+    "marketing-studio":"🎬"
+  };
+  var departmentMap = {
+    manager:["Executive & Growth","#dcb777"], sales:["Executive & Growth","#dcb777"],
+    marketing:["Executive & Growth","#dcb777"], video:["Executive & Growth","#dcb777"],
+    "project-manager":["Engineering","#68b1e0"], architectural:["Engineering","#68b1e0"],
+    plumbing:["Engineering","#68b1e0"], "electrical-fire":["Engineering","#68b1e0"],
+    researcher:["Compliance & Finance","#b09de4"], documentation:["Compliance & Finance","#b09de4"],
+    estimating:["Compliance & Finance","#b09de4"], finance:["Compliance & Finance","#b09de4"],
+    procurement:["Digital & Supply","#79d5bc"], developer:["Digital & Supply","#79d5bc"]
+  };
+  var deptOrder = ["Executive & Growth","Engineering","Compliance & Finance","Digital & Supply"];
+  var lastProjectKey = null;
+  function renderProjects() {
+    var host = el("hqProjects");
+    if (!host || typeof state === "undefined" || !(state.offices instanceof Map)) return;
+    var offices = Array.from(state.offices.values()).filter(function (x) { return x && x.info; });
+    var key = JSON.stringify([state.office, offices.map(function (x) { return [x.info.id,x.info.name]; })]);
+    if (key === lastProjectKey) return;
+    lastProjectKey = key;
+    host.replaceChildren();
+    if (!offices.length) { host.appendChild(make("small","hq-project-loading","等待專案連線…")); return; }
+    offices.forEach(function (item) {
+      var id = item.info.id;
+      var btn = make("button","hq-project-choice" + (state.office === id ? " selected" : ""));
+      btn.type = "button";
+      btn.title = item.info.name;
+      if (state.office === id) btn.setAttribute("aria-current","page");
+      btn.appendChild(make("span","hq-project-emoji",projectIcons[id] || "📁"));
+      btn.appendChild(make("span","",item.info.name.replace(/^[^A-Za-z\u4E00-\u9FFF]+/u,"")));
+      btn.addEventListener("click",function () {
+        if (typeof showOffice !== "function") return;
+        showOffice(id);
+        window.history.replaceState(null, "", "/?office=" + encodeURIComponent(id));
+        lastProjectKey = null;
+        lastTeamKey = null; lastTaskKey = null;
+        renderProjects(); update();
+      });
+      host.appendChild(btn);
+    });
+  }
+  function zoomOffice(delta, reset) {
+    if (typeof office === "undefined" || !office || typeof office.fit !== "function") return;
+    office.zoomFactor = reset ? 1 : Math.min(2.2, Math.max(.75,(office.zoomFactor||1) + delta));
+    office.fit();
+  }
+  [["hqZoomOut",-.15],["hqZoomReset",0],["hqZoomIn",.15]].forEach(function (row) {
+    var b=el(row[0]); if (b) b.addEventListener("click",function () {zoomOffice(row[1],row[1]===0);});
+  });
   function blank(host, msg) {
     host.replaceChildren(make("div", "hq-empty", msg));
   }
@@ -116,14 +170,32 @@
       var liveTxt = live.querySelector("span");
       if (liveTxt) liveTxt.textContent = online ? "LIVE · 即時同步" : "尚未連線";
     }
+    renderProjects();
+    var indicator=el("hqFloorIndicator") || document.querySelector(".hq-floor-indicator");
+    if(indicator) indicator.textContent=list.length+" STAFF · "+(current && current.info ? current.info.name : "HQ");
     var team = el("hqTeam");
-    var teamKey = JSON.stringify(list.map(function (x) { return [x.id, x.name, x.role, x.status]; }));
+    var teamKey = JSON.stringify([typeof state !== "undefined" ? state.office : "",
+      list.map(function (x) { return [x.id, x.name, x.role, x.status]; })]);
     if (team && teamKey !== lastTeamKey) {
       lastTeamKey = teamKey;
-      if (!list.length) blank(team, "未有 AI 員工。按「聘請員工」開始設定 Codex 或 Gemini。");
+      if (!list.length) blank(team, "呢個專案暫時冇 AI 員工。");
       else {
         team.replaceChildren();
-        list.forEach(function (x) { team.appendChild(personCard(x)); });
+        deptOrder.forEach(function (dept) {
+          var group = list.filter(function (e) { return departmentMap[e.id] && departmentMap[e.id][0] === dept; });
+          if(!group.length) return;
+          var header=make("div","hq-dept-head");
+          header.style.setProperty("--department",departmentMap[group[0].id][1]);
+          header.appendChild(make("span","",dept));
+          header.appendChild(make("small","",group.length+"人"));
+          team.appendChild(header);
+          group.forEach(function (e) {
+            var card=personCard(e);
+            card.style.setProperty("--department",departmentMap[e.id][1]);
+            team.appendChild(card);
+          });
+        });
+        list.filter(function (e) {return !departmentMap[e.id];}).forEach(function (e) {team.appendChild(personCard(e));});
       }
     }
     var taskList = el("hqTasks");
