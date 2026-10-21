@@ -208,20 +208,20 @@ const agencySource = "https://github.com/msitarzewski/agency-agents/blob/main/";
 // English professional names + coordinated uniforms by four physical HQ zones.
 // Employees keep their original ID so task boards and chat histories remain linked.
 const identities = {
-  manager:         ["Ethan Brooks", "General Manager · 總經理", "Executive & Growth", "#dcb777", "#243958"],
-  sales:           ["Olivia Carter", "Sales Manager · 業務銷售", "Executive & Growth", "#dcb777", "#243958"],
-  marketing:       ["Chloe Bennett", "Marketing Director · 市場策劃", "Executive & Growth", "#dcb777", "#243958"],
-  video:           ["Mia Foster", "Video Producer · 影片製作", "Executive & Growth", "#dcb777", "#243958"],
-  "project-manager":["Daniel Morgan", "Project Manager · 工程項目", "Engineering", "#4a9fd2", "#223957"],
-  architectural:   ["Sophia Lee", "Architectural Designer · 平面圖", "Engineering", "#4a9fd2", "#223957"],
-  plumbing:        ["Mason Clarke", "Plumbing Designer · 水喉排水圖", "Engineering", "#4a9fd2", "#223957"],
-  "electrical-fire":["Lucas Wong", "M&E Engineer · 電力消防圖", "Engineering", "#4a9fd2", "#223957"],
-  researcher:      ["Grace Chen", "Compliance Analyst · 法規研究", "Compliance & Finance", "#a290d5", "#373955"],
-  documentation:   ["Emma Taylor", "Certification Officer · 認證文件", "Compliance & Finance", "#a290d5", "#373955"],
-  estimating:      ["Henry Wilson", "Cost Estimator · 工程估價", "Compliance & Finance", "#a290d5", "#373955"],
-  finance:         ["Ava Chan", "Finance Controller · 財務", "Compliance & Finance", "#a290d5", "#373955"],
-  procurement:     ["Noah Harris", "Procurement Lead · 採購", "Digital & Supply", "#5ebba7", "#25424b"],
-  developer:       ["Alex Rivera", "IT Developer · 軟件開發", "Digital & Supply", "#5ebba7", "#25424b"]
+  manager:         ["Ethan", "General Manager · 總經理", "Executive & Growth", "#dcb777", "#243958"],
+  sales:           ["Olivia", "Sales Manager · 業務銷售", "Executive & Growth", "#dcb777", "#243958"],
+  marketing:       ["Chloe", "Marketing Director · 市場策劃", "Executive & Growth", "#dcb777", "#243958"],
+  video:           ["Mia", "Video Producer · 影片製作", "Executive & Growth", "#dcb777", "#243958"],
+  "project-manager":["Daniel", "Project Manager · 工程項目", "Engineering", "#4a9fd2", "#223957"],
+  architectural:   ["Sophia", "Architectural Designer · 平面圖", "Engineering", "#4a9fd2", "#223957"],
+  plumbing:        ["Mason", "Plumbing Designer · 水喉排水圖", "Engineering", "#4a9fd2", "#223957"],
+  "electrical-fire":["Lucas", "M&E Engineer · 電力消防圖", "Engineering", "#4a9fd2", "#223957"],
+  researcher:      ["Grace", "Compliance Analyst · 法規研究", "Compliance & Finance", "#a290d5", "#373955"],
+  documentation:   ["Emma", "Certification Officer · 認證文件", "Compliance & Finance", "#a290d5", "#373955"],
+  estimating:      ["Henry", "Cost Estimator · 工程估價", "Compliance & Finance", "#a290d5", "#373955"],
+  finance:         ["Ava", "Finance Controller · 財務", "Compliance & Finance", "#a290d5", "#373955"],
+  procurement:     ["Noah", "Procurement Lead · 採購", "Digital & Supply", "#5ebba7", "#25424b"],
+  developer:       ["Alex", "IT Developer · 軟件開發", "Digital & Supply", "#5ebba7", "#25424b"]
 };
 for (const agent of roster) {
   const identity = identities[agent.id];
