@@ -76,6 +76,13 @@
         <button type="button" data-hq-action="settings"><span class="hq-ico">⚙</span><span>系統設定</span></button>
       </nav>
     </div>
+    <section class="hq-project-section" aria-label="不同商業專案工作空間">
+      <div class="hq-nav-label">業務專案 · PROJECTS</div>
+      <nav class="hq-project-nav" id="hqProjects" aria-label="專案工作空間">
+        <div class="hq-project-loading">讀取專案工作空間中…</div>
+      </nav>
+      <small class="hq-project-tip">不同專案有獨立任務、對話同工作檔案</small>
+    </section>
     <div class="hq-sidebar-bottom">
       <div class="hq-online" id="hqConnection"><i aria-hidden="true"></i><span>等待系統連線</span></div>
       <small>員工及任務狀態直接同步原有 Pixel Office 系統；唔會模擬已完成工作。</small>
@@ -89,6 +96,12 @@
         <h1 id="hqCompanyName">恒輝 AI 總部</h1><p>你的 AI 團隊，喺同一個辦公室協作</p>
       </div>
       <div class="hq-live-pill" id="hqLive"><i aria-hidden="true"></i><span>尚未連線</span></div>
+    </div>
+    <div class="hq-view-tools" role="group" aria-label="辦公室畫面大小">
+      <span class="hq-floor-indicator">14 STAFF · 4 DIVISIONS</span>
+      <button type="button" id="hqZoomOut" title="縮細辦公室" aria-label="縮細辦公室">−</button>
+      <button type="button" id="hqZoomReset" title="適合螢幕大小">適中</button>
+      <button type="button" id="hqZoomIn" title="放大辦公室" aria-label="放大辦公室">＋</button>
     </div>
     <div class="office-wrap" id="officeWrap">
       <canvas id="office"></canvas>
