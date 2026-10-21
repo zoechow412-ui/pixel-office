@@ -60,7 +60,7 @@
     "hang-fai":"🏢", "bhu-housing":"🏗️", "construction":"🔧",
     "derfoe":"🧱", "driver-app":"🚗", "tailoring":"👔",
     "marketing-studio":"🎬",
-    "unibright-ops":"📊", "bhu-plan-ai":"📐", "wp-waterproof":"💧", "firestop-ssn391":"🔥", "adhesives-b2b":"🧴", "estate-agency":"🗺️", "community-housing":"🤝", "social-publishing":"📣", "supcon-adhesive":"🏭", "unibright-web":"🌐", "the-point":"🍽️", "fnb-proposal":"🥢", "daan-daan-catering":"🥣", "newgen-ivf":"🧬", "newgensup":"💊", "dod-biotech":"🧾", "ocean-infinity":"🎪"
+    "unibright-ops":"📊", "bhu-plan-ai":"📐", "wp-waterproof":"💧", "firestop-ssn391":"🔥", "adhesives-b2b":"🧴", "estate-agency":"🗺️", "community-housing":"🤝", "social-publishing":"📣", "supcon-adhesive":"🏭", "unibright-web":"🌐", "the-point":"🍽️", "fnb-proposal":"🥢", "daan-daan-catering":"🥣", "newgen-ivf":"🧬", "newgensup":"💊", "dod-biotech":"🧾", "ocean-infinity":"🎪", "plumbing-drawings":"🚰", "electrical-fire-plans":"⚡", "rust-products":"🛠️", "b2b-sales-leads":"📈", "derfoe-brand-site":"🌐", "building-supply":"🏭", "ai-office-platform":"🤖", "private-book-art":"📖"
   };
   var departmentMap = {
     manager:["Executive & Growth","#dcb777"], sales:["Executive & Growth","#dcb777"],
