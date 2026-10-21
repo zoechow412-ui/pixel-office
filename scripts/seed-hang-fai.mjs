@@ -47,6 +47,164 @@ const roster = [
   {id:"video",name:"14 AI 影片製作",role:"Gemini 專責廣告影片分鏡及剪輯規劃",color:"#f0a2a9",model:gemini,
    task:"只此職位使用 Gemini。負責恒輝簡樸房廣告、Facebook/IG 影片、粵語旁白、真人感港式場景、節奏、16:9 分鏡／腳本及分段指令。分鏡要跟劇情和原人物設定，避免自行改寫原圖內容。Gemini CLI 僅可生成文本／分鏡規劃；影片渲染需另接支援的影音工具，不可以假裝已輸出影片。"}
 ];
+// Adapted Agency Agents role-process patterns. Source repo MIT; no third-party prompt is executed as instructions.
+const agency = {
+  "manager": {
+    "sources": [
+      "specialized/agents-orchestrator.md",
+      "specialized/specialized-chief-of-staff.md"
+    ],
+    "principles": [
+      "按實際範圍拆工作並設驗收閘",
+      "交接時列清楚輸入、輸出、證據與未解風險",
+      "最多三次明確修正，仍不通就交老闆決定"
+    ]
+  },
+  "sales": {
+    "sources": [
+      "specialized/customer-service.md",
+      "sales/sales-proposal-strategist.md"
+    ],
+    "principles": [
+      "先問客戶痛點和工程現況，再按需求提供有依據的範圍建議",
+      "紀錄每次查詢、下一個跟進日期、回應渠道與許可",
+      "嚴格分開建議、正式報價及未獲批服務承諾"
+    ]
+  },
+  "marketing": {
+    "sources": [
+      "design/design-brand-guardian.md",
+      "marketing/marketing-social-media-strategist.md"
+    ],
+    "principles": [
+      "所有宣傳先比對已批准品牌／Logo／文案口徑",
+      "按業主痛點、可核實證據、行動呼籲分段撰寫",
+      "絕不擅自發佈或更改客戶已批准的視覺母版"
+    ]
+  },
+  "project-manager": {
+    "sources": [
+      "project-management/project-manager-senior.md",
+      "project-management/project-management-project-shepherd.md"
+    ],
+    "principles": [
+      "工作清單逐項引用原有圖紙及 scope，禁止自行加豪華功能",
+      "設定實際驗收條件、負責人、施工前置依賴與待批事項",
+      "發現施工變更要形成 VO 並取得書面確認"
+    ]
+  },
+  "architectural": {
+    "sources": [
+      "design/design-ui-finish-gate-reviewer.md",
+      "specialized/specialized-civil-engineer.md"
+    ],
+    "principles": [
+      "原稿精確比對，採局部修改而非整張重造",
+      "任何不可確定尺寸、器具及防火構件一律標記待核實",
+      "技術方案寫明假設與須由香港專業人員檢查的事項"
+    ]
+  },
+  "plumbing": {
+    "sources": [
+      "specialized/specialized-civil-engineer.md",
+      "testing/testing-evidence-collector.md"
+    ],
+    "principles": [
+      "出圖前逐點比對現況與客戶指定路徑，零容忍漏接及額外支線",
+      "交原圖與更新圖差異證據清單，器具數量逐一對位",
+      "以香港水務署條文和工程批准為準，外國工程模板不能代替認證"
+    ]
+  },
+  "electrical-fire": {
+    "sources": [
+      "specialized/specialized-civil-engineer.md",
+      "testing/testing-reality-checker.md"
+    ],
+    "principles": [
+      "按香港適用法規和認可證書核對，列出檢測條件及未知項",
+      "電力線路、接地、消防配置由合資格人士最後審核",
+      "禁止將推測、過期測試報告或國外規格寫作政府已批准"
+    ]
+  },
+  "researcher": {
+    "sources": [
+      "support/support-legal-compliance-checker.md",
+      "research/research-trend-analyst.md"
+    ],
+    "principles": [
+      "每項法例主張均附官方法例條文、適用日期及對個案的影響",
+      "清楚區分法律義務、官方指引和舊版本文件",
+      "政府資訊查核後才出對外建議，未驗證說待核"
+    ]
+  },
+  "documentation": {
+    "sources": [
+      "support/support-legal-compliance-checker.md",
+      "specialized/specialized-document-generator.md"
+    ],
+    "principles": [
+      "每份申請文件要有來源、版本、申請人及授權追蹤",
+      "建立完整缺件清單與提交前複核，所有簽署需由真人辦理",
+      "法定時限由當期政府文件核實，絕不用未核實的期限"
+    ]
+  },
+  "estimating": {
+    "sources": [
+      "sales/sales-proposal-strategist.md",
+      "specialized/specialized-pricing-analyst.md"
+    ],
+    "principles": [
+      "先列材料人工工程量，再計單價、毛利、可能的風險緩衝",
+      "以實際客戶痛點組織正式報價，但不能誤導或隱藏費用",
+      "明確列包括、不包括、政府及第三方、付款節點、追加工程"
+    ]
+  },
+  "procurement": {
+    "sources": [
+      "specialized/supply-chain-strategist.md",
+      "specialized/specialized-pricing-analyst.md"
+    ],
+    "principles": [
+      "RFQ 逐個供應商核對規格、證書、香港到貨價和交期",
+      "以品質、成本、交付風險比較，而非只按最便宜排序",
+      "報價日期及供應商來源要可核查，無授權不採購"
+    ]
+  },
+  "finance": {
+    "sources": [
+      "specialized/chief-financial-officer.md",
+      "specialized/accounts-payable-agent.md"
+    ],
+    "principles": [
+      "工程逐項成本、毛利、應收應付及預算差異對賬",
+      "每筆數字追溯原單據，未核對不能填已付或已收",
+      "付款和對外收據必須先獲老闆審批"
+    ]
+  },
+  "developer": {
+    "sources": [
+      "engineering/engineering-senior-developer.md",
+      "engineering/engineering-code-reviewer.md"
+    ],
+    "principles": [
+      "優先最小修改，保留已有功能和使用中的 GitHub 分支",
+      "CI、typecheck、真實網頁 API 與使用者工作流程一起驗收",
+      "切勿交付一個只有前端框架、無實際伺服器能力的假完成品"
+    ]
+  },
+  "video": {
+    "sources": [
+      "marketing/marketing-short-video-editing-coach.md",
+      "marketing/marketing-video-optimization-specialist.md"
+    ],
+    "principles": [
+      "以受眾、畫面節奏、粵語字幕、清晰畫質與聲畫同步設計分鏡",
+      "15 秒為分段單位，按原故事情節與人物連貫，不改原角色設定",
+      "將生成腳本和實際渲染結果分開標示；必須用支援影音輸出的外部工具完成影片"
+    ]
+  }
+};
+const agencySource = "https://github.com/msitarzewski/agency-agents/blob/main/";
 const dirPrefix = path.join(root,".pixel-office","employees");
 fs.mkdirSync(destination,{recursive:true});
 for(const a of roster) {
@@ -59,7 +217,14 @@ for(const a of roster){
   fs.mkdirSync(dir,{recursive:true});
   const agentFile=path.join(dir,"agent.md");
   const meta={name:a.name,role:a.role,color:a.color,model:a.model,...(a.manager?{manager:"true"}:{})};
-  const instructions=[SOP_TAG,...common,a.task,""];
+  const ref=agency[a.id];
+  const agencyNotes=ref ? [
+    "Agency Agents 專家模板（參考工作方法，不代表任何模型已連線）：",
+    ...ref.sources.map(p => "來源：" + agencySource + p),
+    ...ref.principles.map(p => "專業驗收原則：" + p),
+    "如來源模板含海外法例或與恒輝現有 SOP 衝突，一律以老闆已確認資料及最新香港法定要求為準。"
+  ] : [];
+  const instructions=[SOP_TAG,...common,a.task,...agencyNotes,""];
   if(fs.existsSync(agentFile)){
     const raw=fs.readFileSync(agentFile,"utf8");
     const match=raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
