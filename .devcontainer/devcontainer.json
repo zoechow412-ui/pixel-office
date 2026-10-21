@@ -12,7 +12,7 @@
       "protocol": "http"
     }
   },
-  "postCreateCommand": "npm ci && npm run build",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/start-office.sh",
   "customizations": {
     "vscode": {
