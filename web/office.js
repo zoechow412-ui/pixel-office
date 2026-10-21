@@ -70,6 +70,7 @@ class Office {
     this.selected = null;
     this.hovered = null;
     this.scale = 1;
+    this.zoomFactor = 1.14; // user-adjustable HQ zoom; scrolling preserves readable pixel art
     this.offline = false;
     this.clickHandler = null;
     this.blocked = new Set();
@@ -421,7 +422,7 @@ class Office {
     const bar = stage.querySelector(".layout-bar"); // the layout editor's palette under the office
     const barH = bar && !bar.hidden ? bar.offsetHeight + 12 : 0;
     const ch = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - rosterH - barH;
-    const raw = Math.min(cw / LW, ch / LH);
+    const raw = Math.min(cw / LW, ch / LH) * (this.zoomFactor || 1);
     // 1/16 steps keep pixels crisp; cap at 2.5× for 4K screens, floor at 0.3× for phones
     this.scale = Math.max(0.3, Math.min(2.5, Math.floor(raw * 16) / 16));
     const dpr = window.devicePixelRatio || 1;
@@ -614,6 +615,27 @@ class Office {
     const b = this.b;
     const dim = this.editing ? this.editorDim : null; // the piece being dragged stays faded where it was
     drawFloors(b, this.theme, this.rugItems, dim);
+    // The Hang Fai HQ has one visible floor for all 14 people. Division rugs
+    // identify the four neighbouring desk columns without changing walkable tiles.
+    if (this.rosterIds.length >= 13 && this.rosterIds.includes("plumbing")) {
+      const zones = [
+        [9, "#eac47c", "EXEC / SALES"],
+        [12, "#62aee4", "ENGINEERING"],
+        [15, "#b6a0e9", "COMPLIANCE"],
+        [18, "#72d9c4", "DIGITAL / OPS"]
+      ];
+      b.save();
+      for (const [x, color, label] of zones) {
+        b.globalAlpha = 0.1; b.fillStyle = color;
+        b.fillRect(x*TILE, 2*TILE, 3*TILE, 15*TILE);
+        b.globalAlpha = 0.56; b.fillStyle = color;
+        b.fillRect(x*TILE, 2*TILE, 3*TILE, 3);
+        b.globalAlpha = 1; b.fillStyle = "#20324b";
+        b.font = "bold 8px sans-serif"; b.textAlign = "center";
+        b.fillText(label, (x+1.5)*TILE, 2*TILE+13, 3*TILE-2);
+      }
+      b.restore();
+    }
     drawWalls(b, this.blocked, this.doors, t, this.theme, this.wallItems, dim);
     const items = [];
     const faded = (id, fn) => (dim && id === dim ? () => { b.save(); b.globalAlpha = 0.3; fn(); b.restore(); } : fn);
