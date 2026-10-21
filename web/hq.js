@@ -2,6 +2,16 @@
    No simulated status, tasks or agent execution. */
 (function () {
   "use strict";
+  document.title = "恒輝 AI 總部 · AI Office";
+  // Keep the primary buttons readable to local Hong Kong users.
+  var primaryLabels = [["btnBoard", "任務板"], ["btnMeeting", "會議"]];
+  primaryLabels.forEach(function (pair) {
+    var target = document.getElementById(pair[0]);
+    var label = target && target.querySelector("[data-i18n]");
+    if (label) label.textContent = pair[1];
+  });
+  var hireLabel = document.getElementById("hireLink");
+  if (hireLabel) hireLabel.textContent = "＋ 聘請 AI";
   var statusText = {
     idle: "待命", working: "工作中", waiting: "待批核",
     error: "發生錯誤", sick: "休息中", offline: "離線"
