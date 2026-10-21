@@ -14,7 +14,7 @@ assert.equal(valid.ok,true,JSON.stringify(valid.errors));
 for(const id of ids)assert.ok(scene.assign.get(id),"Missing desk for "+id);
 const byId=Object.fromEntries(scene.items.filter(x=>x.type==="desk").map(x=>[x.emp,x]));
 assert.deepEqual([byId.plumbing.tx,byId.plumbing.ty],[13,11]);
-assert.equal(byId["project-manager"].tx,byId.electrical-fire.tx);
+assert.equal(byId["project-manager"].tx,byId["electrical-fire"].tx);
 assert.equal(byId.sales.tx,byId.marketing.tx);
 assert.equal(byId.researcher.tx,byId.documentation.tx);
 const next=L.scene(null,["manager","developer","sales"],"default");
