@@ -146,7 +146,7 @@ body.hq .label { font-family: "Noto Sans TC", "Manrope", sans-serif; font-size: 
 body.hq .chat, body.hq .modal-card, body.hq .menu-pop {
   background: #14233b; border-color: rgba(152,190,235,.21); box-shadow: 0 24px 70px rgba(0,0,0,.42);
 }
-body.hq .chat { z-index: 28; }
+body.hq .chat { z-index: 28; top: 66px; }
 body.hq .chat-head { background: #1a2d49; }
 
 /* Real-time operational panel, driven by existing office roster and task state. */
@@ -200,7 +200,7 @@ body.hq .chat-head { background: #1a2d49; }
 @media (max-width: 1320px) {
   body.hq { grid-template-columns: 196px minmax(0,1fr); }
   .hq-inspector { display:none; }
-  body.hq .topbar { grid-column:2; }
+  body.hq .topbar { grid-column:2; overflow-x:auto; scrollbar-width:none; }
 }
 @media (max-width: 860px) {
   body.hq { grid-template-columns:68px minmax(0,1fr); grid-template-rows:55px minmax(0,1fr); }
