@@ -205,6 +205,32 @@ const agency = {
   }
 };
 const agencySource = "https://github.com/msitarzewski/agency-agents/blob/main/";
+// English professional names + coordinated uniforms by four physical HQ zones.
+// Employees keep their original ID so task boards and chat histories remain linked.
+const identities = {
+  manager:         ["Ethan Brooks", "General Manager · 總經理", "Executive & Growth", "#dcb777", "#243958"],
+  sales:           ["Olivia Carter", "Sales Manager · 業務銷售", "Executive & Growth", "#dcb777", "#243958"],
+  marketing:       ["Chloe Bennett", "Marketing Director · 市場策劃", "Executive & Growth", "#dcb777", "#243958"],
+  video:           ["Mia Foster", "Video Producer · 影片製作", "Executive & Growth", "#dcb777", "#243958"],
+  "project-manager":["Daniel Morgan", "Project Manager · 工程項目", "Engineering", "#4a9fd2", "#223957"],
+  architectural:   ["Sophia Lee", "Architectural Designer · 平面圖", "Engineering", "#4a9fd2", "#223957"],
+  plumbing:        ["Mason Clarke", "Plumbing Designer · 水喉排水圖", "Engineering", "#4a9fd2", "#223957"],
+  "electrical-fire":["Lucas Wong", "M&E Engineer · 電力消防圖", "Engineering", "#4a9fd2", "#223957"],
+  researcher:      ["Grace Chen", "Compliance Analyst · 法規研究", "Compliance & Finance", "#a290d5", "#373955"],
+  documentation:   ["Emma Taylor", "Certification Officer · 認證文件", "Compliance & Finance", "#a290d5", "#373955"],
+  estimating:      ["Henry Wilson", "Cost Estimator · 工程估價", "Compliance & Finance", "#a290d5", "#373955"],
+  finance:         ["Ava Chan", "Finance Controller · 財務", "Compliance & Finance", "#a290d5", "#373955"],
+  procurement:     ["Noah Harris", "Procurement Lead · 採購", "Digital & Supply", "#5ebba7", "#25424b"],
+  developer:       ["Alex Rivera", "IT Developer · 軟件開發", "Digital & Supply", "#5ebba7", "#25424b"]
+};
+for (const agent of roster) {
+  const identity = identities[agent.id];
+  if (!identity) throw new Error("Missing staff identity for " + agent.id);
+  agent.name = identity[0];
+  agent.role = identity[1];
+  agent.department = identity[2];
+  agent.uniform = { top: identity[3], bottom: identity[4] };
+}
 const dirPrefix = path.join(root,".pixel-office","employees");
 fs.mkdirSync(destination,{recursive:true});
 for(const a of roster) {
@@ -216,7 +242,15 @@ for(const a of roster){
   const dir=path.join(destination,a.id);
   fs.mkdirSync(dir,{recursive:true});
   const agentFile=path.join(dir,"agent.md");
-  const meta={name:a.name,role:a.role,color:a.color,model:a.model,...(a.manager?{manager:"true"}:{})};
+  const original = fs.existsSync(agentFile) ? fs.readFileSync(agentFile,"utf8") : "";
+  let existingLook = {};
+  const lookLine = original.split(/\\r?\\n/).find(line => line.startsWith("look: "));
+  if (lookLine) { try { existingLook=JSON.parse(lookLine.slice(6)); } catch {} }
+  const look = {...existingLook, skin:existingLook.skin||"#e6ba94", hair:existingLook.hair||"#352c2d",
+    hairStyle:existingLook.hairStyle||"short", top:a.uniform.top, bottom:a.uniform.bottom,
+    accessory:existingLook.accessory||"none"};
+  const meta={name:a.name,role:a.role,color:a.uniform.top,look:JSON.stringify(look),
+    model:a.model,...(a.manager?{manager:"true"}:{})};
   const ref=agency[a.id];
   const agencyNotes=ref ? [
     "Agency Agents 專家模板（參考工作方法，不代表任何模型已連線）：",
