@@ -89,6 +89,7 @@
     btn.addEventListener("click", function () { action("tasks"); });
     return btn;
   }
+  var lastTeamKey = null, lastTaskKey = null;
   function update() {
     // Existing app state is the only source of truth; empty means disconnected or unconfigured.
     var current = (typeof cur === "function") ? cur() : null;
@@ -116,7 +117,9 @@
       if (liveTxt) liveTxt.textContent = online ? "LIVE · 即時同步" : "尚未連線";
     }
     var team = el("hqTeam");
-    if (team) {
+    var teamKey = JSON.stringify(list.map(function (x) { return [x.id, x.name, x.role, x.status]; }));
+    if (team && teamKey !== lastTeamKey) {
+      lastTeamKey = teamKey;
       if (!list.length) blank(team, "未有 AI 員工。按「聘請員工」開始設定 Codex 或 Gemini。");
       else {
         team.replaceChildren();
@@ -129,10 +132,17 @@
       var active = tasks.filter(function (x) { return x.status !== "done"; })
         .slice().sort(function (a,b) { return (order[a.status] ?? 9) - (order[b.status] ?? 9) || (b.updated || 0) - (a.updated || 0); })
         .slice(0,5);
-      if (!active.length) blank(taskList, "目前冇待辦任務。喺任務板建立工作，先會開始執行。");
-      else {
-        taskList.replaceChildren();
-        active.forEach(function (x) { taskList.appendChild(taskCard(x, employees)); });
+      var taskKey = JSON.stringify(active.map(function (x) {
+        var owner = employees.get(x.owner);
+        return [x.id, x.title, x.status, x.owner, owner && owner.name];
+      }));
+      if (taskKey !== lastTaskKey) {
+        lastTaskKey = taskKey;
+        if (!active.length) blank(taskList, "目前冇待辦任務。喺任務板建立工作，先會開始執行。");
+        else {
+          taskList.replaceChildren();
+          active.forEach(function (x) { taskList.appendChild(taskCard(x, employees)); });
+        }
       }
     }
     set("hqTaskCount", tasks.filter(function (x) { return x.status !== "done"; }).length + " 項");
