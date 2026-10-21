@@ -20,7 +20,7 @@ import { initSkills, skillCatalog, viewOfSkill, skillById, previewSkill, install
 import { CATEGORIES, initIntegrations, listIntegrations, saveIntegration, checkIntegration, removeIntegration, entryOf, startOAuth, finishOAuth, addCustom, gateway, setOwnClient } from "./integrations.js";
 import { CLAUDE_MODELS, PROVIDERS, activeModels, isActiveModel, initProviders, providersReady, providerStatuses, updateProvider, installProvider, loginProvider, refreshProvider, canInstall, canLogin, type ProviderId } from "./providers.js";
 import { createGuard, isLoopbackHost } from "./security.js";
-import { createOwnerAuth } from "./owner-auth.js";
+import { createOwnerAuth, allowEmbeddedOwnerRequest } from "./owner-auth.js";
 import { acquireLock } from "./lock.js";
 import { writeFileAtomicSync } from "./fsutil.js";
 import { Ledger, dayKey, type Cap } from "./ledger.js";
@@ -514,17 +514,11 @@ if (process.env.RAILWAY_PUBLIC_DOMAIN) {
   extraHosts.push(process.env.RAILWAY_PUBLIC_DOMAIN + ":80");
 }
 const guard = createGuard({ port: settings.port, host: settings.host, extraHosts });
-// Embedded browsers can send Origin: null when submitting the *login form*.
-// This endpoint only checks the supplied password and rate-limits attempts.
-// Preserve strict Host validation and the ordinary Origin/Fetch checks for
-// all other HTTP requests and WebSocket upgrades.
+// Signed owner sessions may operate in an embedded browser that sends
+// Origin: null. Named foreign origins and anonymous mutating requests
+// still go through the strict Host, Origin and Fetch-Site checks.
 app.use((req, res, next) => {
-  if (req.method === "POST" && req.path === "/login" &&
-      req.headers.origin === "null" &&
-      guard.hostOk(req.headers.host) &&
-      String(req.headers["content-type"] || "").startsWith("application/x-www-form-urlencoded")) {
-    return next();
-  }
+  if (allowEmbeddedOwnerRequest(req, ownerAuth, guard.hostOk)) return next();
   guard.middleware(req, res, next);
 });
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
@@ -1429,6 +1423,9 @@ app.use((err: unknown, req: Request, res: express.Response, _next: express.NextF
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, verifyClient: (info, cb) => {
+  if (allowEmbeddedOwnerRequest(info.req, ownerAuth, guard.hostOk) && ownerAuth.verify(info.req)) {
+    return cb(true); // signed session with opaque Origin; never anonymous
+  }
   guard.verifyClient(info, (ok) => {
     if (!ok) return cb(false, 403, "Forbidden");
     if (!ownerAuth.verify(info.req)) return cb(false, 401, "Login required");
