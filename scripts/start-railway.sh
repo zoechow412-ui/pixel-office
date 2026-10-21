@@ -27,7 +27,7 @@ else
   exit 1
 fi
 if [[ ! -f .pixel-office/config.json ]]; then
-  printf '%s\\n' '{"locale":"en","host":"0.0.0.0","offices":[{"id":"hang-fai","name":"恒輝 AI 總部","cwd":"."}]}' > .pixel-office/config.json
+  printf '%s\n' '{"locale":"en","host":"0.0.0.0","offices":[{"id":"hang-fai","name":"恒輝 AI 總部","cwd":"."}]}' > .pixel-office/config.json
 fi
 node scripts/seed-hang-fai.mjs
 node scripts/configure-hang-fai-projects.mjs
