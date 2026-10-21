@@ -107,3 +107,20 @@ button{width:100%;border:0;border-radius:10px;padding:14px;background:#e4bb6e;co
 
   return { enabled, middleware, routes, verify: valid };
 }
+
+// Some in-app browsers use an opaque ("null") Origin for same-window forms,
+// fetches and WebSocket upgrades. A valid owner's signed, SameSite=Strict
+// session cookie can be accepted with that Origin; a foreign named Origin is
+// still refused by the standard guard. The unauthenticated exception is only
+// the rate-limited password form, not task execution or agent WebSockets.
+export function allowEmbeddedOwnerRequest(
+  req: IncomingMessage,
+  auth: ReturnType<typeof createOwnerAuth>,
+  hostOk: (host: string | undefined) => boolean,
+): boolean {
+  if (req.headers.origin !== "null" || !hostOk(req.headers.host)) return false;
+  if (auth.enabled && auth.verify(req)) return true;
+  const target = (req.url || "").split("?")[0];
+  return req.method === "POST" && target === "/login" &&
+    String(req.headers["content-type"] || "").startsWith("application/x-www-form-urlencoded");
+}
