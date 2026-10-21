@@ -17,7 +17,7 @@ try {
   run("scripts/seed-hang-fai.mjs");
   run("scripts/configure-hang-fai-projects.mjs");
   const config=JSON.parse(fs.readFileSync(path.join(sandbox,".pixel-office/config.json"),"utf8"));
-  const expected=["hang-fai","bhu-housing","construction","derfoe","driver-app","tailoring","marketing-studio","unibright-ops","bhu-plan-ai","wp-waterproof","firestop-ssn391","adhesives-b2b","estate-agency","community-housing","social-publishing","supcon-adhesive","unibright-web","the-point","fnb-proposal","daan-daan-catering","newgen-ivf","newgensup","dod-biotech","ocean-infinity"];
+  const expected=["hang-fai","bhu-housing","construction","derfoe","driver-app","tailoring","marketing-studio","unibright-ops","bhu-plan-ai","wp-waterproof","firestop-ssn391","adhesives-b2b","estate-agency","community-housing","social-publishing","supcon-adhesive","unibright-web","the-point","fnb-proposal","daan-daan-catering","newgen-ivf","newgensup","dod-biotech","ocean-infinity","plumbing-drawings","electrical-fire-plans","rust-products","b2b-sales-leads","derfoe-brand-site","building-supply","ai-office-platform","private-book-art"];
   assert.deepEqual(config.offices.map(o=>o.id),expected);
   const base=path.join(sandbox,".pixel-office/employees");
   assert.equal(fs.readdirSync(path.join(base,"hang-fai")).length,14);
@@ -37,11 +37,24 @@ try {
   run("scripts/configure-hang-fai-projects.mjs");
   assert.match(fs.readFileSync(d,"utf8"),/DERFOE private records/);
   assert.doesNotMatch(fs.readFileSync(bh,"utf8"),/DERFOE private records/);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(sandbox,".pixel-office/config.json"))).offices.length,24,"No duplicate project tabs");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(sandbox,".pixel-office/config.json"))).offices.length,32,"No duplicate project tabs");
   assert.match(fs.readFileSync(path.join(base,"derfoe/video/agent.md"),"utf8"),/model: gemini-2.5-flash/);
   assert.match(fs.readFileSync(path.join(base,"bhu-housing/plumbing/agent.md"),"utf8"),/model: gpt-5.3-codex/);
   assert.match(fs.readFileSync(path.join(base,"tailoring/developer/agent.md"),"utf8"),/訂製西裝/);
-  console.log("24 dedicated business workspaces and project-specialist roles verified.");
+  assert.match(fs.readFileSync(path.join(base,"wp-waterproof/researcher/agent.md"),"utf8"),/WP550/);
+  assert.match(fs.readFileSync(path.join(base,"firestop-ssn391/documentation/agent.md"),"utf8"),/SS-N391/);
+  assert.match(fs.readFileSync(path.join(base,"estate-agency/sales/agent.md"),"utf8"),/地產代理/);
+  assert.match(fs.readFileSync(path.join(base,"private-book-art/manager/agent.md"),"utf8"),/私人/);
+  assert.match(fs.readFileSync(path.join(base,"ai-office-platform/developer/agent.md"),"utf8"),/Pixel Office/);
+  for(const office of config.offices.slice(1)){
+    for(const employee of fs.readdirSync(path.join(base,office.id))){
+      const data=fs.readFileSync(path.join(base,office.id,employee,"agent.md"),"utf8");
+      assert.match(data,/model: /,office.id+" "+employee+" missing model");
+      if(employee==="video")assert.match(data,/model: gemini-2.5-flash/,office.id+" video must use Gemini");
+      else assert.match(data,/model: gpt-5.3-codex/,office.id+" "+employee+" must use Codex");
+    }
+  }
+  console.log("32 dedicated workspaces, preserved memories and Codex/Gemini role assignments verified.");
 } finally {
   fs.rmSync(sandbox,{recursive:true,force:true});
 }
