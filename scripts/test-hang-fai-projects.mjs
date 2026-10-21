@@ -17,7 +17,7 @@ try {
   run("scripts/seed-hang-fai.mjs");
   run("scripts/configure-hang-fai-projects.mjs");
   const config=JSON.parse(fs.readFileSync(path.join(sandbox,".pixel-office/config.json"),"utf8"));
-  const expected=["hang-fai","bhu-housing","construction","derfoe","driver-app","tailoring","marketing-studio"];
+  const expected=["hang-fai","bhu-housing","construction","derfoe","driver-app","tailoring","marketing-studio","unibright-ops","bhu-plan-ai","wp-waterproof","firestop-ssn391","adhesives-b2b","estate-agency","community-housing","social-publishing","supcon-adhesive","unibright-web","the-point","fnb-proposal","daan-daan-catering","newgen-ivf","newgensup","dod-biotech","ocean-infinity"];
   assert.deepEqual(config.offices.map(o=>o.id),expected);
   const base=path.join(sandbox,".pixel-office/employees");
   assert.equal(fs.readdirSync(path.join(base,"hang-fai")).length,14);
@@ -37,11 +37,11 @@ try {
   run("scripts/configure-hang-fai-projects.mjs");
   assert.match(fs.readFileSync(d,"utf8"),/DERFOE private records/);
   assert.doesNotMatch(fs.readFileSync(bh,"utf8"),/DERFOE private records/);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(sandbox,".pixel-office/config.json"))).offices.length,7,"No duplicate project tabs");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(sandbox,".pixel-office/config.json"))).offices.length,24,"No duplicate project tabs");
   assert.match(fs.readFileSync(path.join(base,"derfoe/video/agent.md"),"utf8"),/model: gemini-2.5-flash/);
   assert.match(fs.readFileSync(path.join(base,"bhu-housing/plumbing/agent.md"),"utf8"),/model: gpt-5.3-codex/);
   assert.match(fs.readFileSync(path.join(base,"tailoring/developer/agent.md"),"utf8"),/訂製西裝/);
-  console.log("Seven isolated business workspaces and project-professional roles verified.");
+  console.log("24 dedicated business workspaces and project-specialist roles verified.");
 } finally {
   fs.rmSync(sandbox,{recursive:true,force:true});
 }
