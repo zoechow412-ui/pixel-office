@@ -81,8 +81,12 @@ for(const p of projects){
       const front=old.match(/^(---\r?\n[\s\S]*?\r?\n---\r?\n)/);
       if(!front)throw new Error("已有專案員工檔案損壞："+agentFile);
       const oldBody=old.slice(front[0].length).split(tag)[0].trim();
-      // Preserve user-written text and frontmatter, only the managed section changes.
-      const newer=front[0]+(oldBody?oldBody+"\n\n":"")+instructions;
+      // Synchronize the staff's approved English first name, while preserving
+      // per-project custom settings, conversation history, notes and memory.
+      const sourceName=meta[0].match(/^name:\s*(.+)$/m);
+      if(!sourceName)throw new Error("總部員工欠缺名稱："+id);
+      const namedHeader=front[0].replace(/^name:.*$/m,"name: "+sourceName[1]);
+      const newer=namedHeader+(oldBody?oldBody+"\n\n":"")+instructions;
       if(newer!==old)fs.writeFileSync(agentFile,newer);
     }else{
       fs.writeFileSync(agentFile,meta[0]+instructions);
