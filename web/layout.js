@@ -144,31 +144,51 @@
     const rows = [[8], [5, 11], [4, 9, 14], [3, 7, 11, 15]][Math.min(rowsNeeded, 4) - 1];
     return { cols, rows };
   }
-  // Dedicated columns make each department visually legible: HQ/Business,
-  // Engineering, Compliance/Finance, IT/Supply. App and server use the same
-  // layout.js file, so seat assignments stay valid on both ends.
+  // Hang Fai HQ uses four *separate, physically walled rooms*, not colored
+  // columns in the same open office. Real seat assignments are shared by the
+  // canvas, BFS movement logic, server-side layout validator and task runner.
   const HQ_SEATS = {
-    manager:[10,3], sales:[10,7], marketing:[10,11], video:[10,14],
-    "project-manager":[13,3], architectural:[13,7], plumbing:[13,11], "electrical-fire":[13,14],
-    researcher:[16,3], documentation:[16,7], estimating:[16,11], finance:[16,14],
-    procurement:[19,3], developer:[19,7],
+    // North-west wing (former kitchen): 4 executive / sales / media colleagues.
+    manager:[1,3], sales:[4,3], marketing:[1,6], video:[4,6],
+    // Large central studio: four engineering colleagues. Meeting room remains intact.
+    "project-manager":[10,4], architectural:[13,4], plumbing:[16,4], "electrical-fire":[19,4],
+    // South-east wing (former archive): 4 dedicated compliance & finance seats.
+    researcher:[25,11], documentation:[28,11], estimating:[25,14], finance:[28,14],
+    // South-west wing (former lounge): purchasing and IT.
+    procurement:[1,11], developer:[4,11],
   };
+  const HQ_WINGS = [
+    {key:"kitchen", title:"EXECUTIVE & SALES", count:4, color:"#eec77c"},
+    {key:"office", title:"ENGINEERING STUDIO", count:4, color:"#75b7eb"},
+    {key:"archive", title:"COMPLIANCE & FINANCE", count:4, color:"#c2a6ed"},
+    {key:"lounge", title:"DIGITAL & PROCUREMENT", count:2, color:"#77d8c6"}
+  ];
+  const isHangFaiTeam = (ids) => ids.length >= 13 && ids.includes("manager") &&
+    ids.includes("plumbing") && ids.includes("video");
+  function hqItems() {
+    // Free the 3 side rooms for real desks; keep the meeting room and main
+    // studio furnishing. No fake CSS seat positions or obstructed corridors.
+    return defaultItems().filter(it => {
+      const inExec = it.tx <= 6 && it.ty >= 2 && it.ty <= 8;
+      const inDigital = it.tx <= 6 && it.ty >= 10;
+      const inCompliance = it.tx >= 23 && it.ty >= 10;
+      return !(inExec || inDigital || inCompliance);
+    });
+  }
   function autoDesks(n, ids = []) {
     n = Math.min(n, MAX_EMP);
     if (n < 1) return [];
     const { cols, rows } = deskLayout(n);
-    // Apply the bespoke department floor only for the complete Hang Fai HQ,
-    // not unrelated offices with a different team composition.
-    const isHq = n >= 13 && ids.includes("manager") && ids.includes("plumbing") && ids.includes("video");
-    if (isHq) {
+    if (isHangFaiTeam(ids)) {
       const occupied = new Set();
-      return ids.slice(0, n).map((id, i) => {
-        let pos = HQ_SEATS[id];
-        if (!pos || occupied.has(pos.join(","))) {
-          pos = rows.flatMap(y => cols.map(x => [x,y])).find(p => !occupied.has(p.join(",")));
+      return ids.slice(0,n).map((id,i)=>{
+        let pos=HQ_SEATS[id];
+        if(!pos || occupied.has(pos.join(","))) {
+          pos=rows.flatMap(y=>cols.map(x=>[x,y])).find(p=>!occupied.has(p.join(",")));
         }
+        if(!pos)throw new Error("No office desk for "+id);
         occupied.add(pos.join(","));
-        return { id: "desk" + i, type: "desk", tx: pos[0], ty: pos[1], emp: String(id) };
+        return {id:"desk"+i,type:"desk",tx:pos[0],ty:pos[1],emp:String(id)};
       });
     }
     return Array.from({ length: n }, (_, i) => ({ id: "desk" + i, type: "desk", tx: cols[i % cols.length], ty: rows[Math.floor(i / cols.length)], ...(ids[i] != null ? { emp: String(ids[i]) } : {}) }));
@@ -438,7 +458,7 @@
   function scene(doc, ids, theme, progress = 0) {
     ids = ids.slice(0, MAX_EMP);
     let items, missing = [], added = false;
-    if (!doc) items = defaultItems().concat(autoDesks(ids.length, ids));
+    if (!doc) items = (isHangFaiTeam(ids) ? hqItems() : defaultItems()).concat(autoDesks(ids.length, ids));
     else { const r = ensureDesks(doc.items, ids); items = r.items; missing = r.missing; added = r.changed; }
     items = withDecor(items, doc, theme, progress);
     const { map, missing: unseated } = assignDesks(items, ids);
@@ -498,7 +518,7 @@
   };
 
   globalThis.POLayout = {
-    COLS, ROWS, MAX_EMP, MAX_ITEMS, MAX_DESKS, ENTRANCE, ROOMS, DOORS, DOOR_GROUPS, FIXED_SPOTS, WALLS, TYPES, TYPE_ORDER, DEFAULT_DIR,
+    COLS, ROWS, MAX_EMP, MAX_ITEMS, MAX_DESKS, ENTRANCE, ROOMS, DOORS, DOOR_GROUPS, HQ_WINGS, isHangFaiTeam, FIXED_SPOTS, WALLS, TYPES, TYPE_ORDER, DEFAULT_DIR,
     THEMES, WALL, RUG, PROGRESS_ORDER, WINDOW_TILES, isWall, wallOrder, wallOf, defaultWall, defaultRug, progressWall, withDecor,
     key, defaultItems, deskLayout, autoDesks, build, check, sanitize, toDoc, clone, assignDesks, ensureDesks, findPlace, nextId, scene,
     canDelete, rotate, repair, nearestFree, tilesOf, floorTiles, isFloor: (x, y) => floor.has(key(x, y)),
