@@ -3,3 +3,6 @@ dist/
 data/
 .DS_Store
 *.log
+
+# Codespaces AI Office runtime state: chat history, keys, employee memories.
+.pixel-office/
