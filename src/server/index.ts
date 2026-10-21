@@ -20,6 +20,7 @@ import { initSkills, skillCatalog, viewOfSkill, skillById, previewSkill, install
 import { CATEGORIES, initIntegrations, listIntegrations, saveIntegration, checkIntegration, removeIntegration, entryOf, startOAuth, finishOAuth, addCustom, gateway, setOwnClient } from "./integrations.js";
 import { CLAUDE_MODELS, PROVIDERS, activeModels, isActiveModel, initProviders, providersReady, providerStatuses, updateProvider, installProvider, loginProvider, refreshProvider, canInstall, canLogin, type ProviderId } from "./providers.js";
 import { createGuard, isLoopbackHost } from "./security.js";
+import { createOwnerAuth } from "./owner-auth.js";
 import { acquireLock } from "./lock.js";
 import { writeFileAtomicSync } from "./fsutil.js";
 import { Ledger, dayKey, type Cap } from "./ledger.js";
@@ -505,8 +506,18 @@ const app = express();
 initProviders(R, settings.dataDir);
 initIntegrations(settings.dataDir);
 initSkills(settings.dataDir);
-const guard = createGuard({ port: settings.port, host: settings.host, extraHosts: (process.env.PIXEL_OFFICE_ALLOWED_HOSTS ?? "").split(",") });
+const remoteOffice = !isLoopbackHost(settings.host);
+const ownerAuth = createOwnerAuth(process.env.PIXEL_OFFICE_ACCESS_PASSWORD, remoteOffice);
+const extraHosts = (process.env.PIXEL_OFFICE_ALLOWED_HOSTS ?? "").split(",");
+if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+  // Railway terminates HTTPS at its proxy, forwarding requests with public Host/Origin.
+  extraHosts.push(process.env.RAILWAY_PUBLIC_DOMAIN + ":80");
+}
+const guard = createGuard({ port: settings.port, host: settings.host, extraHosts });
 app.use(guard.middleware);
+app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
+ownerAuth.routes(app);
+app.use(ownerAuth.middleware);
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(PKG_ROOT, "web")));
 
@@ -1405,7 +1416,13 @@ app.use((err: unknown, req: Request, res: express.Response, _next: express.NextF
 });
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, verifyClient: (info, cb) => guard.verifyClient(info, cb) });
+const wss = new WebSocketServer({ server, verifyClient: (info, cb) => {
+  guard.verifyClient(info, (ok) => {
+    if (!ok) return cb(false, 403, "Forbidden");
+    if (!ownerAuth.verify(info.req)) return cb(false, 401, "Login required");
+    cb(true);
+  });
+} });
 wss.on("error", (err) => logError("websocket server", err));
 
 // Keeps only well-formed image blocks of a supported type; at most 10 images and ~20 MB of base64 per message.
