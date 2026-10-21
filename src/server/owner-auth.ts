@@ -36,7 +36,7 @@ export function createOwnerAuth(password: string | undefined, remote: boolean) {
     if (!enabled) return true;
     const token = cookieValue(req);
     const parts = token.split(".");
-    if (parts.length !== 3 || parts[0] !== "v1" || !/^\\d{13}$/.test(parts[1]) || !/^[a-f0-9]{64}$/.test(parts[2])) return false;
+    if (parts.length !== 3 || parts[0] !== "v1" || !/^\d{13}$/.test(parts[1]) || !/^[a-f0-9]{64}$/.test(parts[2])) return false;
     const expiry = Number(parts[1]);
     if (!Number.isFinite(expiry) || expiry <= Date.now() || expiry > Date.now() + SESSION_MS) return false;
     const expected = Buffer.from(sign(parts[0] + "." + parts[1]), "hex");
