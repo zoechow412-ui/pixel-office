@@ -713,7 +713,7 @@ class Office {
     const isHq = POLayout.isHangFaiTeam(this.rosterIds);
     if (isHq) {
       b.save();
-      drawHqCharm(b, t);
+      if(this.theme !== "space") drawHqCharm(b, t);
       for (const wing of POLayout.HQ_WINGS) {
         const r=ROOMS.find(x=>x.key===wing.key);
         if(!r)continue;
@@ -739,6 +739,7 @@ class Office {
     }
     if(isHq && window.HQZones) window.HQZones.drawFloor(b);
     drawWalls(b, this.blocked, this.doors, t, this.theme, this.wallItems, dim);
+    if(this.theme === "space") drawSpaceWindows(b, t);
     const items = [];
     const faded = (id, fn) => (dim && id === dim ? () => { b.save(); b.globalAlpha = 0.3; fn(); b.restore(); } : fn);
     for (const d of this.decor) items.push({ y: d.y, draw: faded(d.id, () => d.draw(b, t)) });
@@ -823,6 +824,22 @@ function traitOf(e) {
   return e.trait;
 }
 const lifeStrings = () => (window.PO && window.PO.strings && window.PO.strings.ui && window.PO.strings.ui.life) || {};
+// Pixel artwork stays in the wall band; no collision, seat or character changes.
+function drawSpaceWindows(b, t) {
+  b.save();
+  b.fillStyle='#75e0de';
+  for(let x=16;x<950;x+=70)b.fillRect(x,53,34,3);
+  for(const x of [284,540]) {
+    b.fillStyle='#081e37';b.fillRect(x,4,104,44);
+    b.fillStyle='#d5eeff';
+    for(let i=0;i<12;i++){b.globalAlpha=.6+.4*Math.sin(t/1800+i)**2;b.fillRect(x+5+(i*31)%94,7+(i*13)%35,1,1);}
+    b.globalAlpha=1;b.fillStyle='#438fc5';b.beginPath();b.arc(x+65,27,19,0,Math.PI*2);b.fill();
+    b.fillStyle='#8ac5b9';b.fillRect(x+53,18,15,5);b.fillRect(x+63,24,12,7);
+    b.strokeStyle='#64d9ec';b.lineWidth=2;b.strokeRect(x,4,104,44);
+    b.beginPath();b.moveTo(x+52,4);b.lineTo(x+52,48);b.stroke();
+  }
+  b.restore();
+}
 function drawHqCharm(b, t) {
   // A flat woven rug and wall fairy lights: purely decorative, no furniture,
   // seats, walkable cells or click coordinates are changed.
@@ -2048,6 +2065,7 @@ function drawOverhead(b, e, t, occupied) {
 // ---------- themes ----------
 // Same room layout and walkable tiles for every theme; only palette, floors, wall decor and props change.
 const THEMES = {
+  space: { wall: {face:'#25415b',top:'#62cce1',base:'#192c42',base2:'#0e2035',edge:'#071525',inner:'#365976',innerLight:'#75cce4',innerDark:'#142f48'}, floors:{kitchen:'nightTiles',office:'nightTiles',meeting:'studioCarpet',lounge:'darkTiles',archive:'nightTiles'}, rug:'round', dark:true },
   default: { wall: { face: "#6f8896", top: "#7f98a6", base: "#5c7280", base2: "#43545f", edge: "#39474f", inner: "#8ea3b0", innerLight: "#a9bcc7", innerDark: "#3f4f5a" }, floors: { kitchen: "tiles", office: "wood", meeting: "carpet", lounge: "wood", archive: "concrete" }, rug: "lounge" },
   football: { wall: { face: "#2f6b45", top: "#3f8a5a", base: "#25553a", base2: "#1c412c", edge: "#142f20", inner: "#4f7f62", innerLight: "#6c9c7e", innerDark: "#223d2d" }, floors: { kitchen: "tiles", office: "wood", meeting: "turf", lounge: "turf", archive: "concrete" }, rug: "pitch" },
   fashion: { wall: { face: "#e6cfc8", top: "#f2e2dd", base: "#cfb0a8", base2: "#b8968e", edge: "#9f7f78", inner: "#d9bdb6", innerLight: "#ecd6d0", innerDark: "#8f6f68" }, floors: { kitchen: "tiles", office: "wood", meeting: "carpetLight", lounge: "marble", archive: "wood" }, rug: "round" },
@@ -4214,3 +4232,6 @@ function drawDayNight(b, t, ev) {
   b.fillStyle = `rgba(8,14,44,${a.toFixed(3)})`;
   b.fillRect(0, 0, LW, LH);
 }
+
+// Space keeps the original movable wall fittings and editor behavior.
+for (const piece of Object.keys(POLayout.WALL.space)) WALL_ART["space_"+piece] = WALL_ART["default_"+piece];
