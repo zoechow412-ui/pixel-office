@@ -1596,7 +1596,7 @@ function startMeeting(o: OfficeRt, topic: string, ids: string[], interruptBusy: 
   if (o.meeting?.active) return;
   const people = ids.map((id) => o.employees.get(id)).filter((e): e is Employee => !!e && !e.inMeeting);
   if (!people.length) return;
-  const m = new Meeting(topic, people, o.store, o.def.cwd, true);
+  const m = new Meeting(topic, people, o.store, o.def.cwd, false);
   o.meeting = m;
   const office = o.def.id;
   m.on("state", () => { if (o.meeting === m) broadcast({ type: "meeting", office, meeting: m.state() }); });
