@@ -12,3 +12,5 @@ data/
 
 # AI provider CLI binaries installed during Railway image build
 .office-clis/
+
+/web/work-status.json

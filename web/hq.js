@@ -166,10 +166,6 @@
     }
   }
   function zoomOffice(delta, reset) {
-    if (document.body.classList.contains("hq-reference-active")) {
-      var host=el("officeWrap");var factor=reset?1:Math.min(2.2,Math.max(.7,Number(host.dataset.spaceZoom||1)+delta));
-      host.dataset.spaceZoom=factor;host.style.setProperty("--hq-scene-zoom",factor);return;
-    }
     if (typeof office === "undefined" || !office || typeof office.fit !== "function") return;
     office.zoomFactor = reset ? 1 : Math.min(2.2, Math.max(.75,(office.zoomFactor||1) + delta));
     office.fit();
@@ -291,79 +287,8 @@
   if (typeof panelHooks !== "undefined") panelHooks.push(function (what, officeId) {
     if (!officeId || (typeof state !== "undefined" && officeId === state.office)) update();
   });
-  // Locked original artwork selected by Zoe. Do not redraw or recolour this asset.
-  var sceneHost=el("officeWrap"), spaceScene=null, spacePeople=new Map();
-  if(sceneHost){
-    spaceScene=make("div","hq-space-scene");
-    var art=make("img","hq-space-art");art.src="/assets/hang-fai-space-hq-empty.png";
-    art.alt="恒輝太空總部，上下層六個獨立艙室；Zoe 確認的原圖";art.width=1536;art.height=1024;
-    spaceScene.appendChild(art);
-    var seats=[
-      ["manager",12,84,0],["sales",7,85,1],["marketing",52,84,2],["video",60,85,3],
-      ["architectural",44,44,4],["plumbing",51,45,5],["electrical-fire",77,44,6],["project-manager",87,45,7],
-      ["procurement",93,44,8],["developer",44,85,9],["researcher",57,44,10],["documentation",20,85,11],
-      ["estimating",94,85,12],["finance",85,84,13]
-    ];
-    var actors=[];
-    seats.forEach(function(p,i){
-      var b=make("button","hq-space-actor");b.type="button";b.dataset.staff=p[0];
-      var sprite=make("span","hq-space-sprite");sprite.style.backgroundPosition=(p[3]%7)*(100/6)+"% "+Math.floor(p[3]/7)*100+"%";
-      var label=make("span","hq-space-actor-label");var bubble=make("span","hq-space-bubble");
-      b.appendChild(sprite);b.appendChild(label);b.appendChild(bubble);
-      b.addEventListener("click",function(){openChat(p[0]);});spacePeople.set(p[0],b);spaceScene.appendChild(b);
-      actors.push({id:p[0],el:b,label:label,bubble:bubble,x:p[1],y:p[2],home:[p[1],p[2]],path:[],status:null,meeting:false,next:performance.now()+1200+i*410,index:i});
-    });
-    function moveActor(a,tx,ty,meeting){
-      var top=a.home[1]<60;
-      if(meeting){
-        // Upper rooms enter the upper passage; lower rooms use the visible stairs.
-        a.path=top?[[a.x,49],[35,49],[32,48],[tx,ty]]:[[a.x,66],[38,66],[35,58],[32,50],[tx,ty]];
-      }else if(a.meeting){
-        a.path=top?[[32,49],[a.home[0],49],a.home.slice()]:[[32,50],[35,58],[38,66],[a.home[0],66],a.home.slice()];
-      }else a.path=[[tx,ty]];
-      a.meeting=meeting;
-    }
-    var lastFrame=performance.now();
-    function animateStaff(now){
-      requestAnimationFrame(animateStaff);
-      var dt=Math.min(.06,(now-lastFrame)/1000);lastFrame=now;
-      if(document.hidden||spaceScene.hidden)return;
-      actors.forEach(function(a){
-        if(!a.path.length && a.status==="idle" && !a.meeting && now>a.next){
-          a.path=[[a.home[0]+(a.index%2?2:-2),a.home[1]+1.2],a.home.slice()];a.next=now+4500+(a.index%5)*500;
-        }
-        var dest=a.path[0];
-        if(dest){var dx=dest[0]-a.x,dy=dest[1]-a.y,d=Math.hypot(dx,dy),step=dt*(a.meeting||a.path.length>2?8:2.4);
-          if(d<=step){a.x=dest[0];a.y=dest[1];a.path.shift();}
-          else{a.x+=dx/d*step;a.y+=dy/d*step;}
-          a.el.classList.toggle("facing-left",dx<0);
-        }
-        a.el.classList.toggle("walking",!!a.path.length);
-        a.el.style.left=a.x+"%";a.el.style.top=a.y+"%";
-      });
-    }
-    requestAnimationFrame(animateStaff);
-    [["會議室",16,18,"meeting"],["設計部",49,18,"architectural"],["工程部",83,18,"project-manager"],["秘書室",16,65,"manager"],["數碼製作",49,65,"video"],["財務室",84,65,"finance"]].forEach(function(p){
-      var b=make("button","hq-space-room",p[0]);b.type="button";b.style.left=p[1]+"%";b.style.top=p[2]+"%";
-      b.setAttribute("aria-label","開啟"+p[0]);b.onclick=function(){if(p[3]==="meeting")action("meeting");else openChat(p[3]);};spaceScene.appendChild(b);
-    });
-    sceneHost.appendChild(spaceScene);document.body.classList.add("hq-reference-active");
-    function syncSpace(){
-      var team=typeof cur==="function"?cur():null;var hq=typeof state!=="undefined"&&state.office==="hang-fai";
-      document.body.classList.toggle("hq-reference-active",hq);spaceScene.hidden=!hq;
-      actors.forEach(function(a){var e=team&&team.employees.get(a.id);var status=e?statusText[e.status]||e.status:"未連線";
-        var inMeeting=!!(team&&team.meeting&&!team.meeting.endedAt&&team.meeting.participants.some(function(p){return p.id===a.id&&p.joined;}));
-        if(inMeeting!==a.meeting){moveActor(a,8+(a.index%5)*5.4,39+Math.floor(a.index/5)*3.6,inMeeting);}
-        if(e&&e.status!==a.status&&!inMeeting){if(e.status!=="idle"){a.path=[a.home.slice()];}a.status=e.status;}
-        a.el.setAttribute("aria-label",(e?e.name:a.id)+" · "+status+" · 開啟對話");a.el.title=(e?e.name:a.id)+" · "+status;
-        a.label.textContent=e?e.name:a.id;a.bubble.textContent=inMeeting?"開會中":status;
-        a.el.dataset.status=e?e.status:"offline";
-      });
-    }
-    if(typeof panelHooks!=="undefined")panelHooks.push(syncSpace);syncSpace();window.setInterval(syncSpace,500);
-  }
   var command=make("section","hq-command");command.id="hqCommand";
-  command.appendChild(make("h3","","太空總部工作台"));
+  command.appendChild(make("h3","","總部工作台"));
   var output=make("div","");output.setAttribute("aria-live","polite");
   var commandButtons=make("div","");command.appendChild(commandButtons);command.appendChild(output);
   var stage=document.querySelector(".stage");if(stage)stage.appendChild(command);
@@ -405,6 +330,16 @@
   });});
   button("用量及上限",function(){var b=el("stripSpend");if(b)b.click();else output.replaceChildren(make("p","","請由頂部用量入口開啟。"));});
   button("一句開會",function(){action("meeting");});
+  var workCard=make("section","hq-command hq-live-work");workCard.setAttribute("aria-label","工作對話同步進度");
+  if(stage)stage.prepend(workCard);
+  async function syncWork(){
+    try{
+      var r=await fetch("/work-status.json",{cache:"no-store"});if(!r.ok){workCard.hidden=true;return;}
+      var d=await r.json();if(!d.updatedAt||Date.now()-d.updatedAt>1800000){workCard.hidden=true;return;}
+      workCard.hidden=false;workCard.replaceChildren(make("h3","","工作對話同步 · "+(d.status==="working"?"處理中":d.status==="blocked"?"遇到問題":"本階段完成")),make("p","",d.summary),make("small","","來源："+d.source+" · "+new Date(d.updatedAt).toLocaleString("zh-HK")));
+    }catch{workCard.hidden=true;}
+  }
+  syncWork();window.setInterval(syncWork,2000);
   update();
   // Connection transitions need not have a panel event; this is display-only refresh.
   window.setInterval(update, 10000);

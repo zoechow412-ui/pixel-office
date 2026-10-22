@@ -11,3 +11,7 @@ The workbench exposes yesterday's persisted events, source-file indices, the fin
 Pending: ongoing mailbox and finance synchronization, attachment handling and reviewed send integration, complete historical document ingestion, full sprite walking frames/collision/occlusion, mobile verification and production persistence/deployment. The local app must not be reported as a completed public deployment.
 
 Validation: build/typecheck; character knowledge isolation; layout validation/fuzz suite; coordinated meeting regression; browser movement, all 14 meeting participants, interactive Ava chat and a real finance answer against the imported snapshot. Real finance test initially hit Windows ENAMETOOLONG; large office context now goes over stdin rather than process arguments.
+
+## Current visual preference
+
+The user rejected the sprite-atlas scene and requested the previous pixel office. The pixel renderer is the active default again. Space artwork remains in history/assets for reference; do not reactivate it without a new request.

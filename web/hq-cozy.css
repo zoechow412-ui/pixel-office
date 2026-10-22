@@ -30,47 +30,6 @@ body.hq .chat:has(>.hq-character-knowledge) {grid-template-rows:auto auto minmax
 @media(max-width:899px){body.hq .stage{padding:95px 12px 20px;}body.hq .hq-sidebar{overflow-x:hidden;}body.hq .office-wrap{border-width:3px;border-radius:13px;}}
 @media(max-width:599px){body.hq .stage{padding-top:88px;}body.hq .hq-stage-heading{left:14px;right:14px;}body.hq .hq-kicker{font-size:8px;}body.hq .hq-stage-heading h1{font-size:17px;}body.hq .hq-live-pill{font-size:8px;}body.hq .label{font-size:8px;padding:1px 3px;}}
 
-/* Zoe approved concept 5: space headquarters. */
-body.hq{background:#050c20;color:#dfeaff}
-body.hq .stage{background:radial-gradient(circle at 78% 25%,#203a6555,transparent 35%),radial-gradient(circle at 20% 70%,#39296355,transparent 35%),#050d22}
-body.hq .stage::before{background-image:radial-gradient(#c9eaff 1px,transparent 1px);background-size:47px 43px;opacity:.45}
-body.hq .office-wrap{border:5px solid #456a8b;border-radius:30px;box-shadow:0 0 0 2px #70deff,0 0 35px #33adf540,0 25px 65px #0008}
-body.hq .hq-sidebar,body.hq .topbar{background:linear-gradient(140deg,#172b49,#0a162d)}
-body.hq .label{background:#0a2039ee;color:#e0faff;border-color:#4a9dc2;border-radius:8px}
-body.hq .label.selected{background:#293255;color:#fff;border-color:#bba4ff}
-body.hq .hq-kicker{color:#75ddff}
-body.hq .roster-chip{background:#152d47;border-color:#396081}
-body.hq .hq-nav button.active{box-shadow:inset 3px 0 #6cdbff;background:#243d6155}
 .hq-command{margin:14px 0;padding:14px;border:1px solid #426b89;border-radius:14px;background:#10253d;color:#dfefff}
 .hq-command h3{margin:0 0 8px}.hq-command button{padding:8px 12px;margin:4px;border:1px solid #49799b;border-radius:8px;background:#1d3c5c;color:#e2f6ff;cursor:pointer}
 .hq-command p{line-height:1.6;font-size:12px}.hq-command ul{padding-left:20px;font-size:12px;line-height:1.7}
-@media(max-width:599px){body.hq .office-wrap{border-width:3px;border-radius:16px}.hq-command{padding:10px}}
-
-/* Approved original illustration, kept byte-for-byte; interaction sits above it. */
-body.hq-reference-active .office-wrap{width:100%!important;height:auto!important;border:0;border-radius:16px;box-shadow:0 12px 48px #0006;max-width:1536px;position:relative;overflow:hidden;background:#071329}
-body.hq-reference-active #office,body.hq-reference-active #labels{display:none!important}
-.hq-space-scene{position:relative;width:100%;line-height:0}
-.hq-space-art{display:block;width:100%;height:auto;max-width:none;filter:none}
-.hq-space-person{position:absolute;transform:translate(-50%,-50%);width:7%;height:11%;border:2px solid transparent;background:transparent;border-radius:15px;cursor:pointer;color:transparent;font:700 11px/1.3 sans-serif;padding:0;z-index:2}
-.hq-space-person:hover,.hq-space-person:focus-visible{border-color:#99eeff;background:#071c3a99;color:#fff;text-shadow:0 1px 4px #000;outline:2px solid #99eeff}
-.hq-space-person[data-status="working"]:after,.hq-space-person[data-status="waiting"]:after{content:"";position:absolute;right:0;top:0;width:8px;height:8px;background:#63f2bb;border-radius:50%;box-shadow:0 0 8px #63f2bb}
-.hq-space-person[data-status="waiting"]:after{background:#ffcc75}
-.hq-space-room{position:absolute;transform:translate(-50%,-50%);width:27%;height:6%;cursor:pointer;color:transparent;border:1px solid transparent;background:transparent;border-radius:12px;font-size:12px;z-index:3}
-.hq-space-room:hover,.hq-space-room:focus-visible{border-color:#a5eaff;background:#082343dd;color:#fff;outline:2px solid #a5eaff}
-body.hq-reference-active .stage{padding-top:100px}
-@media(max-width:599px){body.hq-reference-active .stage{padding:88px 6px 12px}.hq-space-person:focus-visible{font-size:8px}.hq-space-room:focus-visible{font-size:9px}}
-
-.hq-space-actor{position:absolute;transform:translate(-50%,-100%);width:8%;height:16%;background:none;border:0;padding:0;cursor:pointer;z-index:4;overflow:visible;isolation:isolate}
-.hq-space-sprite{display:block;width:100%;height:100%;background-image:url('/assets/hang-fai-staff-atlas.png');background-size:700% 200%;background-repeat:no-repeat;filter:drop-shadow(0 4px 2px #05172b66);transform-origin:50% 90%;pointer-events:none}
-.hq-space-actor.walking .hq-space-sprite{animation:space-walk .32s ease-in-out infinite alternate}
-.hq-space-actor.facing-left .hq-space-sprite{scale:-1 1}
-.hq-space-actor-label{position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#07192bbb;border:1px solid #95ddff77;border-radius:5px;color:#effaff;font:700 clamp(7px,.8vw,12px)/1.4 sans-serif;padding:1px 4px}
-.hq-space-bubble{position:absolute;left:50%;top:0;transform:translate(-50%,-80%);white-space:nowrap;padding:3px 6px;background:#fff6de;color:#15263e;border-radius:7px;font:700 clamp(7px,.8vw,11px)/1.4 sans-serif;opacity:0;pointer-events:none}
-.hq-space-actor:hover .hq-space-bubble,.hq-space-actor:focus-visible .hq-space-bubble,.hq-space-actor[data-status="working"] .hq-space-bubble,.hq-space-actor[data-status="waiting"] .hq-space-bubble{opacity:1}
-.hq-space-actor:focus-visible{outline:2px solid #95e4ff;border-radius:15px}
-@keyframes space-walk{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-4px) rotate(3deg)}}
-@media(prefers-reduced-motion:reduce){.hq-space-actor.walking .hq-space-sprite{animation:none}}
-
-.hq-space-actor{width:5%;height:13%}
-
-body.hq-reference-active .office-wrap{width:min(100%,calc((100dvh - 240px) * 1.5 * var(--hq-scene-zoom,1)))!important;min-width:280px;margin-left:auto;margin-right:auto}
