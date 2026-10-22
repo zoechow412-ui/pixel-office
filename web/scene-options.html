@@ -1,0 +1,19 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>恒輝辦公室 三款活動場景預覽</title>
+<link rel="stylesheet" href="/style.css"><style>
+body{display:block;overflow:auto;background:#101d30;color:#f8f0dc;font-family:Arial,sans-serif;margin:0;padding:20px}h1{font-size:23px;margin:0 0 10px}p{color:#c6d3de;line-height:1.5}nav{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}button{background:#20374c;color:#fff2cf;border:1px solid #6689a4;border-radius:9px;padding:11px 14px;font:inherit;cursor:pointer}button[aria-pressed=true]{background:#e5be79;color:#172338}main{height:calc(100vh - 215px);min-height:360px;padding:0;display:flex;justify-content:center;align-items:center;overflow:auto}small{color:#bacbd8}.label small{display:none}.office-wrap{flex:none}#office{border-radius:12px}#subtitle{margin:6px 0}
+</style><h1>恒輝辦公室 場景預覽</h1><small>沿用原有人物、座位、碰撞及動畫；只預覽外觀，唔改正式設定，唔啟動模型。</small>
+<nav id="choices"></nav><p id="subtitle"></p><main id="preview-stage"><div class="office-wrap"><canvas id="office"></canvas><div id="labels" class="labels"></div></div></main>
+<script src="/layout.js"></script><script src="/office.js"></script><script src="/scene-options.js"></script><script>
+(async()=>{
+  const roster=(await (await fetch('/api/offices')).json()).find(o=>o.id==='hang-fai').employees;
+  const office=new Office(document.getElementById('office'),document.getElementById('labels'));
+  office.setEmployees(roster.map(e=>({...e,status:'idle'})));
+  office.lively=true;office.motionConsent=true;
+  const pick=key=>{SceneOptions.apply(office,key);document.getElementById('subtitle').textContent=SceneOptions.specs[key].subtitle+'。人物動作只作設計示範，唔係實際任務進度。';document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.key===key)));};
+  for(const [key,s] of Object.entries(SceneOptions.specs)){const b=document.createElement('button');b.textContent=s.title;b.dataset.key=key;b.onclick=()=>pick(key);document.getElementById('choices').appendChild(b);}
+  pick(new URLSearchParams(location.search).get('style')||'space');
+  // Demonstrate the same working pose and seat binding as the live application.
+  for(const id of ['manager','finance','architectural','developer','marketing','estimating'])office.setStatus(id,'working');
+  office.start();
+})().catch(err=>{document.getElementById('subtitle').textContent='預覽載入失敗：'+err.message;});
+</script></html>
