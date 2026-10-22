@@ -394,6 +394,9 @@ class Office {
         e.spot = null;
       } else if (e.meet) {
         e.meet = false;
+        e.meetingActivity = null;
+        e.sipping = 0;
+        e.micro = null;
         e.spot = null;
         this.goTo(e, e.seat.tx, e.seat.ty);
         e.restUntil = now + rand(9000, 22000);
@@ -567,10 +570,35 @@ class Office {
       }
       this.lifeApply(e, now);
       this.lifeTalk(e, now);
-      if (e.meet) { if(!e.spot&&!e.path.length)this.assignMeetingSpots(); continue; }
+      if (e.meet) { if(!e.spot&&!e.path.length)this.assignMeetingSpots(); this.meetingLife(e, now); continue; }
       if (e.status === "idle" && now > e.restUntil) this.decideIdle(e, now);
       if (e.status !== "idle" && e.status !== "sick" && !this.atSeat(e)) this.goTo(e, e.seat.tx, e.seat.ty);
     }
+  }
+
+  // Local body language, never a model turn or a fabricated contribution.
+  meetingLife(e, now) {
+    if (e.path.length || !e.spot) return;
+    e.meetingActivity = "聆聽";
+    if (!this.lively || (REDUCED_MOTION.matches && !this.motionConsent)) return;
+    const speaker = this.emps.find(o => o.meet && o.status === "working" && !o.path.length);
+    if (speaker && speaker !== e) {
+      const dx = speaker.x - e.x, dy = speaker.y - e.y;
+      e.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
+    }
+    if (e.status === "working" || e.hand) {
+      e.anim = e.spot.anim === "sit" || e.spot.anim === "sitfree" ? "wave" : "chat";
+      e.meetingActivity = e.hand ? "舉手" : "處理會議內容";
+      return;
+    }
+    const phase = Math.floor((now + e.seed * 17) / 2200) % 8;
+    // Seated gestures stay seated; standing colleagues keep their own floor tile.
+    const seated = e.spot.anim === "sit" || e.spot.anim === "sitfree";
+    if (phase === 0 && seated) { e.anim = "sip"; e.sipping = now - ((now + e.seed * 17) % 2200); e.meetingActivity = "飲水"; }
+    else if (phase === 2 && seated) { e.anim = "paper"; e.meetingActivity = "翻筆記"; }
+    else if (phase === 4) { e.anim = seated ? "stretch" : "chat"; e.meetingActivity = seated ? "伸展" : "轉身活動"; }
+    else if (phase === 6) { e.dir = ["left", "down", "right", "up"][Math.floor(now / 550) % 4]; e.meetingActivity = "望向同事"; }
+    else { e.sipping = 0; e.micro = null; }
   }
 
   arrived(e, now) {
@@ -759,8 +787,8 @@ class Office {
       if (!el) continue;
       el.style.left = (e.x + 16) * this.scale + "px";
       el.style.top = (e.y + TILE + (this.atSeat(e) ? 30 : 2)) * this.scale + "px";
-      if(el.dataset){el.dataset.person = e.id; el.dataset.pose = e.anim; el.dataset.status = e.status;}
-      el.setAttribute?.("aria-label", e.name + " · " + e.status + " · " + e.anim);
+      if(el.dataset){el.dataset.person = e.id; el.dataset.pose = e.anim; el.dataset.status = e.status; el.dataset.meetingActivity = e.meet ? e.meetingActivity || "前往會議室" : "";}
+      el.setAttribute?.("aria-label", e.name + " · " + e.status + " · " + e.anim + (e.meet ? " · " + (e.meetingActivity || "前往會議室") : ""));
       el.classList.toggle("selected", e.id === this.selected);
     }
   }
@@ -1118,7 +1146,12 @@ Object.assign(Office.prototype, {
     if (!e) return;
     const now = performance.now();
     const S = lifeStrings();
-    this.say(e, lifePick((S.lines || {})[traitOf(e)], lifePick(S.click)));
+    const greetings = {
+      manager: "Zoe，我喺度。有咩要我跟進？", finance: "Zoe，要一齊睇邊份數？",
+      marketing: "Zoe，今日想試咩新諗法？", architectural: "Zoe，想一齊睇圖嗎？",
+      video: "Zoe，想傾片嘅故事定分鏡？", documentation: "Zoe，要搵邊份文件？"
+    };
+    this.say(e, greetings[e.id] || "Zoe，我喺度。你想傾咩？");
     if (e.status !== "idle" || e.meet || e.path.length || e.act || e.errand) return;
     const seat = this.atSeat(e);
     if (seat) { e.sipping = 0; e.act = { kind: "hop", anim: "wave", hold: true, t0: now, until: now + 1500, dir: "down" }; }
