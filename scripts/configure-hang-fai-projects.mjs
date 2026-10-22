@@ -32,7 +32,7 @@ const projects=[
    scope:"訂製西裝／個人色彩分析網站及購買流程：客戶流程要快捷直接、根據上載本人照片先分析再提供個人化建議；公開網站及報告不要出中文，設計及資訊頁面依已批准內容。不要將建築工程價錢或 DERFOE 品牌帶入此網站。"},
   {id:"marketing-studio",name:"🎬 MEDIA · 宣傳及影片",
    staff:["manager","marketing","sales","video"],
-   scope:"Facebook/Instagram 貼文、品牌廣告、港式視覺、簡樸房及 DERFOE 影片分鏡、15 秒分段、粵語旁白及素材審核。影片企劃由 Gemini 影片員工專責；所有品牌需用對應專案的官方素材，不可跨品牌錯用。"},
+   scope:"Facebook/Instagram 貼文、品牌廣告、港式視覺、簡樸房及 DERFOE 影片分鏡、15 秒分段、粵語旁白及素材審核。影片企劃由 Codex 影片員工專責；所有品牌需用對應專案的官方素材，不可跨品牌錯用。"},
   {id:"unibright-ops",name:"📊 UNIBRIGHT OPS · 工程CRM及報價系統",
    staff:["manager","developer","project-manager","estimating","finance","sales"],
    scope:"UNIBRIGHT Ops：工程項目進度、客戶跟進、工程報價、發票、收款、收據PDF、可編輯價格目錄及價格歷史；如系統使用 Supabase 只能透過授權連接，禁止複製歷史密碼。"},
@@ -104,7 +104,7 @@ const projects=[
    scope:"工程化學品、建材規格、供應商、香港工程項目／基建物料採購、公開招標條件、測試標準、材料檢驗、送貨及比較報價。高壓絕緣／納米材料只在有真實 TDS 時研究；不得聲稱已投標或通過測試。"},
   {id:"ai-office-platform",name:"🤖 AI OFFICE · 系統開發及連線",
    staff:["manager","developer","researcher","finance"],
-   scope:"Pixel Office／GitHub zoechow412-ui/pixel-office、14 AI 員工、Codex 與 Gemini 影片、部門座位、任務板、真正模型登入、登入保護、持久化及 Vercel／Railway 部署。以可用性驗收，嚴禁將角色圖像顯示當成模型已連線。"},
+   scope:"Pixel Office／GitHub zoechow412-ui/pixel-office、14 AI 員工、全員 Codex 及影片企劃、部門座位、任務板、真正模型登入、登入保護、持久化及 Vercel 部署。以可用性驗收，嚴禁將角色圖像顯示當成模型已連線。"},
   {id:"private-book-art",name:"📖 PRIVATE · 書本章節插畫",
    staff:["manager","architectural","marketing","video"],
    scope:"私人長篇故事／書本封面與逐章情節插畫、人物形象、完整內文查證、按章節情節出圖及封面排版。此區屬私人創作、不是恒輝建築或 DERFOE 業務；不得自動分享書稿、人物照片或敏感私人內容予商業專案。"}
@@ -126,7 +126,7 @@ for(const p of projects){
     "工作資料、聊天、記憶、任務板均按本 office 分開；同一名字的員工在不同 office 都有獨立記憶。",
     "本工作空間只可根據本專案獲授權的資料進行工作；不得偷讀、轉移另一專案的客戶檔案、密碼或內部商業資料。",
     "所有案件至少包含：輸入、原始來源、執行職位、工作成果、核對項目、待批事項。",
-    "所有 Codex 員工只有成功登入模型後先可以執行；影片員工 Gemini 亦要有效金鑰及渲染工具。",
+    "所有員工包括影片職位均使用 Codex ChatGPT 套餐；不得自動改用 API。影片實際渲染須另行驗證支援工具。",
     "跨專案共用資料前必須由老闆明確指定。專案目錄唔係隔離沙箱，存取權限仍須由系統提供者強制執行。"
   ].join("\n")+"\n";
   if(!fs.existsSync(projectFile))fs.writeFileSync(projectFile,projectNote);

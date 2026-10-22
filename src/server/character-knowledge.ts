@@ -22,10 +22,13 @@ function readText(file: string, limit: number): string {
 }
 
 export function characterProjects(character: Character, offices: OfficeDef[], dataDir?: string): CharacterProject[] {
+  // Zoe assigned these HQ roles to BHU sales preparation. Reference access does
+  // not create extra employees or expose unrelated/private workspaces.
+  const bhuReferenceRole = character.officeId === "hang-fai" && ["developer", "marketing", "video"].includes(character.id);
   return offices.filter(o => o.id !== "hang-fai" &&
     (character.officeId === "hang-fai" || character.officeId === o.id) &&
     /^[a-z0-9-]+$/.test(character.id) &&
-    fs.existsSync(path.join(o.employeesDir, character.id, "agent.md")))
+    (fs.existsSync(path.join(o.employeesDir, character.id, "agent.md")) || (bhuReferenceRole && o.id === "bhu-housing")))
     .map(o => {
       const sourceDir = path.join(o.cwd, "sources");
       let names: string[] = [];
