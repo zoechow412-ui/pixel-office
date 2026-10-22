@@ -86,6 +86,9 @@ class Office {
     this.theme = "default";
     this.particles = [];
     this.last = performance.now();
+    this.lively = localStorage.getItem("po.lively") !== "0";
+    this.motionConsent = localStorage.getItem("po.motionConsent") === "1";
+    window.addEventListener("hq-motion", (ev) => { this.lively = ev.detail !== false; this.motionConsent = this.lively; });
     this.labelEls = new Map();
     this.roomEls = [];
     canvas.addEventListener("mousemove", (e) => { if (!this.editing) this.onMove(e); });
@@ -185,7 +188,8 @@ class Office {
         tx: enters ? ENTRANCE.tx : seat.tx, ty: enters ? ROWS : seat.ty,
         x: (enters ? ENTRANCE.tx : seat.tx) * TILE, y: (enters ? ROWS : seat.ty) * TILE,
         dir: enters ? "up" : "down", anim: enters ? "walk" : "sit", path: [], walkDist: 0, spot: null,
-        restUntil: performance.now() + rand(5000, 16000),
+        restUntil: performance.now() + 1800 + i * 650,
+        ambientAt: performance.now() + 2200 + i * 950,
         bubble: null, unread: 0, seed: i * 977 + 13, sipAt: performance.now() + rand(6000, 20000),
       };
       if (enters) { ne.entering = true; ne.restUntil = 0; }
@@ -408,8 +412,18 @@ class Office {
     for (const e of this.emps) {
       if (!e.meet || e.spot) continue;
       const taken = new Set(this.emps.filter((o) => o !== e && o.spot).map((o) => o.spot.key));
-      const s = this.meetingSpots.find((x) => !taken.has(x.key));
-      if (s && this.goToSpot(e, s)) e.spot = s;
+      const reserved = new Set(this.emps.filter(o=>o!==e&&o.spot).map(o=>key(o.spot.tx,o.spot.ty)));
+      const candidates = this.meetingSpots.filter(x => !taken.has(x.key)&&!reserved.has(key(x.tx,x.ty)));
+      let placed = false;
+      for(const s of candidates)if(this.goToSpot(e,s)){e.spot=s;placed=true;break;}
+      // The classic room has 12 named places. Extra participants need real floor
+      // positions too, rather than remaining at their desks with a joined badge.
+      const room=ROOMS.find(r=>r.key==="meeting");
+      if(!placed&&room&&this.meetingSpots.length)for(let y=room.y0;y<=room.y1&&!placed;y++)for(let x=room.x0;x<=room.x1;x++){
+        if(reserved.has(key(x,y))||this.isBlocked(x,y,e)||[...this.doors].some(k=>{const [dx,dy]=k.split(",").map(Number);return Math.abs(dx-x)+Math.abs(dy-y)<=1;}))continue;
+        const s={key:"meeting-floor-"+x+"-"+y,tx:x,ty:y,dir:y<(room.y0+room.y1)/2?"down":"up",anim:"stand",meet:true};
+        if(this.goToSpot(e,s)){this.meetingSpots.push(s);e.spot=s;placed=true;break;}
+      }
     }
   }
 
@@ -431,7 +445,8 @@ class Office {
     const bar = stage.querySelector(".layout-bar"); // the layout editor's palette under the office
     const barH = bar && !bar.hidden ? bar.offsetHeight + 12 : 0;
     const ch = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - rosterH - barH;
-    const raw = Math.min(cw / LW, ch / LH) * (this.zoomFactor || 1);
+    const sideOpen = document.body?.classList?.contains("chat-open") || document.body?.classList?.contains("meeting-open");
+    const raw = Math.min(Math.min(cw / LW, ch / LH) * (this.zoomFactor || 1), sideOpen ? cw / LW : Infinity);
     // 1/16 steps keep pixels crisp; cap at 2.5× for 4K screens, floor at 0.3× for phones
     this.scale = Math.max(0.3, Math.min(2.5, Math.floor(raw * 16) / 16));
     const dpr = window.devicePixelRatio || 1;
@@ -453,6 +468,9 @@ class Office {
     if (this.freeSeats.has(key(x, y))) return true; // the chair of an empty desk
     for (const o of this.emps) {
       if (o === self) continue;
+      // Gathering participants may pass one another; assigned destinations are
+      // separately reserved, so a standing colleague cannot seal the room entrance.
+      if (self?.meet && o.meet) continue;
       if (o.seat.tx === x && o.seat.ty === y) return true;
       if (o.spot && o.spot.tx === x && o.spot.ty === y) return true;
       if (!o.path.length && o.tx === x && o.ty === y) return true;
@@ -502,6 +520,8 @@ class Office {
 
   update(dt, now) {
     this.tickEvents(now);
+    if(now-(this.motionReportAt||0)>1000){this.motionReportAt=now;window.dispatchEvent?.(new CustomEvent("hq-motion-frame",{detail:{walking:this.emps.filter(e=>e.anim==="walk").length,reduced:REDUCED_MOTION.matches,consent:this.motionConsent}}));}
+    this.ambientLife(now);
     if (this.particles.length) {
       for (const p of this.particles) { p.vy += 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.98; p.life -= dt; p.rot += p.vr * dt; }
       this.particles = this.particles.filter((p) => p.life > 0 && p.y < LH + 8);
@@ -515,7 +535,7 @@ class Office {
         const gx = next.tx * TILE, gy = next.ty * TILE;
         const dx = gx - e.x, dy = gy - e.y;
         const dist = Math.hypot(dx, dy);
-        const step = WALK_SPEED * dt;
+        const step = WALK_SPEED * dt * (this.lively ? 1.12 : 1);
         e.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
         if (dist <= step) {
           e.x = gx; e.y = gy; e.tx = next.tx; e.ty = next.ty;
@@ -547,7 +567,7 @@ class Office {
       }
       this.lifeApply(e, now);
       this.lifeTalk(e, now);
-      if (e.meet) continue;
+      if (e.meet) { if(!e.spot&&!e.path.length)this.assignMeetingSpots(); continue; }
       if (e.status === "idle" && now > e.restUntil) this.decideIdle(e, now);
       if (e.status !== "idle" && e.status !== "sick" && !this.atSeat(e)) this.goTo(e, e.seat.tx, e.seat.ty);
     }
@@ -571,6 +591,7 @@ class Office {
   celebrate(id) { const e = this.emps.find((x) => x.id === id); if (e) this.burst(e.x + 16, e.y + 8, 60); }
 
   decideIdle(e, now) {
+    if (REDUCED_MOTION.matches && !this.motionConsent) { e.restUntil = now + 20000; return; }
     if (this.tryNap(e, now)) return;
     const goSpot = this.atSeat(e) ? Math.random() < 0.6 : Math.random() < 0.45;
     if (goSpot) {
@@ -580,6 +601,41 @@ class Office {
     e.spot = null;
     this.goTo(e, e.seat.tx, e.seat.ty);
     e.restUntil = now + rand(8000, 20000);
+  }
+
+  // Local idle activity only. These poses never change model or task status.
+  ambientLife(now) {
+    if (!this.lively || (REDUCED_MOTION.matches && !this.motionConsent) || this.editing || now - (this.ambientCheck || 0) < 600) return;
+    this.ambientCheck = now;
+    const max = Math.max(1, Math.ceil(this.emps.length / 5));
+    let moving = this.emps.filter(e => e.path.length && !e.meet).length;
+    for (const e of this.emps) {
+      if (e.status !== "idle" || e.meet || e.entering || e.act || e.errand || e.path.length || e.sipping) continue;
+      if (!e.ambientAt) e.ambientAt = now + 3000 + e.seed % 7000;
+      if (now < e.ambientAt) continue;
+      e.ambientAt = now + rand(16000, 29000);
+      if (!this.atSeat(e)) { this.goTo(e, e.seat.tx, e.seat.ty); e.spot = null; continue; }
+      // Try every available facility; a single unreachable spot must not freeze the whole room.
+      if (moving < max) {
+        const taken = new Set(this.emps.filter(o => o !== e && o.spot).map(o => o.spot.key));
+        const spots = this.spots.filter(s => !taken.has(s.key) && !(this.meetingOn && s.meet)).sort(() => Math.random() - .5);
+        let started = false;
+        for (const s of spots) if (!this.isBlocked(s.tx,s.ty,e) && this.goToSpot(e,s) && e.path.length) { e.spot=s; started=true; break; }
+        // Saved department layouts can have no break furniture. Take a short reachable aisle walk.
+        if (!started) {
+          const candidates=[];
+          for (let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++) {
+            if(Math.abs(dx)+Math.abs(dy)<2 || this.isBlocked(e.seat.tx+dx,e.seat.ty+dy,e))continue;
+            candidates.push([e.seat.tx+dx,e.seat.ty+dy]);
+          }
+          candidates.sort(()=>Math.random()-.5);
+          for(const [tx,ty] of candidates) if(this.goTo(e,tx,ty)&&e.path.length){e.spot=null;started=true;break;}
+        }
+        if(started){moving++;e.restUntil=now+rand(5500,9000);this.say(e,"活動一下",1700);continue;}
+      }
+      e.micro={kind:"stretch",t0:now};
+      this.say(e,"待命中",1500);
+    }
   }
 
   // ---------- input ----------
@@ -612,7 +668,7 @@ class Office {
       const dt = Math.min(0.05, (now - this.last) / 1000);
       requestAnimationFrame(loop);
       if (document.hidden) { this.last = now; return; }
-      if (REDUCED_MOTION.matches && now - this.last < 200) return;
+      if (REDUCED_MOTION.matches && !this.motionConsent && now - this.last < 200) return;
       this.last = now;
       this.update(dt, now);
       this.draw(now);
@@ -703,6 +759,8 @@ class Office {
       if (!el) continue;
       el.style.left = (e.x + 16) * this.scale + "px";
       el.style.top = (e.y + TILE + (this.atSeat(e) ? 30 : 2)) * this.scale + "px";
+      if(el.dataset){el.dataset.person = e.id; el.dataset.pose = e.anim; el.dataset.status = e.status;}
+      el.setAttribute?.("aria-label", e.name + " · " + e.status + " · " + e.anim);
       el.classList.toggle("selected", e.id === this.selected);
     }
   }
@@ -985,10 +1043,10 @@ Object.assign(Office.prototype, {
     e.lifeAt = now + rand(9000, 24000);
     let kind = null;
     if (e.anim === "sit") {
-      const opts = [["stretch", 3], ["yawn", 3], ["doze", 2 * dozeChance(e)]];
+      const opts = [["stretch", 3], ["yawn", 3], ["doze", this.lively ? 0 : 2 * dozeChance(e)]];
       let r = Math.random() * opts.reduce((s, o) => s + o[1], 0);
       for (const [k, w] of opts) { r -= w; if (r <= 0) { kind = k; break; } }
-    } else if (e.anim === "sitfree" && Math.random() < 0.6 * dozeChance(e)) kind = "doze";
+    } else if (!this.lively && e.anim === "sitfree" && Math.random() < 0.6 * dozeChance(e)) kind = "doze";
     if (!kind) return;
     const dur = kind === "doze" ? rand(7000, 12000) : kind === "yawn" ? 1900 : 2300;
     e.act = { kind, anim: kind === "doze" && e.anim === "sitfree" ? "dozefree" : kind, t0: now, until: now + dur, spot: e.spot || null };
@@ -3979,7 +4037,7 @@ Object.assign(Office.prototype, {
 
   // At night an idle employee may curl up on a free sofa seat for a while.
   tryNap(e, now) {
-    if (!isNight() || e.meet || this.evt || Math.random() > 0.5) return false;
+    if (this.lively || !isNight() || e.meet || this.evt || Math.random() > 0.5) return false;
     const taken = new Set(this.emps.filter((o) => o !== e && o.spot).map((o) => o.spot.key));
     const s = this.spots.find((x) => x.group === "sofa" && !taken.has(x.key));
     if (!s || !this.goToSpot(e, s)) return false;

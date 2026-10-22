@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 const [logFile,outFile]=process.argv.slice(2);
 if(!logFile||!outFile||!logFile.endsWith('.jsonl'))throw Error('Provide one chat log and status destination');
-let offset=fs.statSync(logFile).size, pending='', lastStatus='';
+let offset=fs.statSync(logFile).size, pending='', lastStatus='', lastPublished=0;
 const summaries={working:'本專案工作對話正在處理及執行操作',done:'本專案工作對話已完成本輪回覆',blocked:'本專案工作對話已中斷或遇到問題'};
 function publish(status){
-  if(status===lastStatus)return;lastStatus=status;
+  if(status===lastStatus && Date.now()-lastPublished<15000)return;lastStatus=status;lastPublished=Date.now();
   const temp=outFile+'.tmp';fs.writeFileSync(temp,JSON.stringify({status,summary:summaries[status],source:'本專案 Codex 工作對話 自動同步',updatedAt:Date.now()}));fs.renameSync(temp,outFile);
 }
 export function statusOf(event){

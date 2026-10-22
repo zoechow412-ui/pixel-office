@@ -1,4 +1,5 @@
 import { DEFAULT_CODEX_MODEL } from "./providers.js";
+import { registerLocalWorkbench } from "./local-workbench.js";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
@@ -24,7 +25,7 @@ import { createGuard, isLoopbackHost } from "./security.js";
 import { createOwnerAuth, allowEmbeddedOwnerRequest } from "./owner-auth.js";
 import { characterProjects } from "./character-knowledge.js";
 import { acquireLock } from "./lock.js";
-import { writeFileAtomicSync } from "./fsutil.js";
+import { readJsonSafe, writeFileAtomicSync } from "./fsutil.js";
 import { Ledger, dayKey, type Cap } from "./ledger.js";
 import { initPrices, pricesFile, customPrices, parsePrices, saveCustomPrices, DEFAULT_PRICES } from "./prices.js";
 import { EventLog, type OfficeEvent } from "./events.js";
@@ -358,15 +359,20 @@ function wokeManager(o: OfficeRt, reason: string) {
 }
 
 // CEO supervision: deterministic scans are free of model calls. A changed exception
-// queues one batched manager follow-up and existing daily limits still apply.
+// queues a digest for the next user-requested turn, without starting a model.
 function ceoExceptions(o: OfficeRt, now=Date.now()) {
-  return (o.def.id === "hang-fai" ? [...offices.values()] : [o]).flatMap(source => source.board.tasks.filter(k=>k.status!=="done").flatMap(k=>{
+  return (o.def.id === "hang-fai" ? [...offices.values()] : [o]).flatMap(source => {
+    const taskIssues=source.board.tasks.filter(k=>k.status!=="done").flatMap(k=>{
     const owner=source.employees.get(k.owner);
     const reason=!owner ? "未有有效負責人" : k.status==="blocked" ? "工作受阻" : k.status==="review" ? "成果待審核" :
       k.status==="doing" && now-k.updated>30*60e3 ? "30分鐘未更新進度" :
       k.status==="todo" && now-k.updated>24*60*60e3 ? "待辦超過一天" : "";
     return reason ? [{office:source.def.id,officeName:source.def.name,id:k.id,title:k.title,owner:owner?.cfg.name??k.owner,status:k.status,reason,updated:k.updated}] : [];
-  }));
+  });
+    const local=readJsonSafe<{events?:Array<{id:string;title:string;owner:string;at:string;done:boolean}>}>(path.join(source.store.dir,"local-workbench.json"),()=>({events:[]}));
+    const due=(local.events??[]).filter(e=>!e.done&&Date.parse(e.at)<=now+86400000).map(e=>({office:source.def.id,officeName:source.def.name,id:"calendar:"+e.id,title:e.title,owner:e.owner||"未填負責人",status:"todo",reason:Date.parse(e.at)<now?"日程已逾期":"日程24小時內到期",updated:Date.parse(e.at)}));
+    return [...taskIssues,...due];
+  });
 }
 function superviseCeo(o: OfficeRt) {
   if(o.def.id!=="hang-fai")return;
@@ -380,7 +386,7 @@ function superviseCeo(o: OfficeRt) {
   o.store.setMeta("_office","ceoFollowups",seen);
   pm.addDigest("CEO 追蹤工作："+changed.map(k=>`[${k.officeName}] #${k.id} ${k.title}，負責 ${k.owner}，${k.reason}`).join("；")+
     "。逐項核對最新成果、負責人、下一步及受阻原因。未驗證不得標完成；先處理現有任務，不自行開新研究或寄信。需要老闆決定時列出具體事項。");
-  nudgeManager(o);
+  // Do not start a model for deterministic reminders.
 }
 setInterval(()=>{for(const o of offices.values())superviseCeo(o);},60000).unref();
 
@@ -555,8 +561,10 @@ app.use((req, res, next) => {
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 ownerAuth.routes(app);
 app.use(ownerAuth.middleware);
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "6mb" }));
 app.use(express.static(path.join(PKG_ROOT, "web")));
+registerLocalWorkbench(app, { root: path.dirname(configPath(R)), dataDir: settings.dataDir,
+  offices: () => [...offices.values()].map(o => ({id:o.def.id,name:o.def.name,cwd:o.def.cwd,board:o.board})) });
 
 function publicInfo(e: Employee) {
   const { id, name, role, color, look, officeId } = e.cfg;

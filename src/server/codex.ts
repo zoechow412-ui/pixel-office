@@ -76,7 +76,9 @@ const toml = (v: unknown) => JSON.stringify(v); // JSON strings and arrays of st
 
 // This office explicitly uses the existing ChatGPT login, never an inherited API key.
 function codexPlanEnv() {
-  const env={...process.env};delete env.OPENAI_API_KEY;delete env.CODEX_API_KEY;return env;
+  const env={...process.env};delete env.OPENAI_API_KEY;delete env.CODEX_API_KEY;
+  for(const name of Object.keys(env))if(/^OFFICE_(MAIL|IMAP|SMTP)_/.test(name))delete env[name];
+  return env;
 }
 
 // One turn. Resolves when the process ends; `kill` stops it (the boss pressed stop).

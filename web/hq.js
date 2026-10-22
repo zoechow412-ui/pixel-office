@@ -73,7 +73,7 @@
       var hire = el("hireLink");
       if (hire) window.location.assign(hire.href);
     } else if (which === "overview") {
-      var stage = document.querySelector(".stage");
+      var stage = document.getElementById("officeWrap") || document.querySelector(".stage");
       if (stage) stage.scrollIntoView({block: "nearest", behavior: "smooth"});
     } else if (targetIds[which] && el(targetIds[which])) {
       el(targetIds[which]).click();
