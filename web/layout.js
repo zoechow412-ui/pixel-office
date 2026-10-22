@@ -165,6 +165,19 @@
   ];
   const isHangFaiTeam = (ids) => ids.length >= 13 && ids.includes("manager") &&
     ids.includes("plumbing") && ids.includes("video");
+  const HQ_FUNCTION_ITEMS = [
+    {id:"zone-print",type:"printer",tx:9,ty:9},
+    {id:"zone-plan",type:"bookshelf",tx:12,ty:9},
+    {id:"zone-stock",type:"cabinets",tx:18,ty:9},
+    {id:"zone-sample",type:"boxes",tx:16,ty:9},
+    {id:"zone-coffee",type:"counter",tx:8,ty:13},
+    {id:"zone-water",type:"cooler",tx:8,ty:15},
+    {id:"zone-files",type:"cabinets",tx:17,ty:13},
+    {id:"zone-film",type:"printer",tx:17,ty:15},
+    {id:"zone-books",type:"bookshelf",tx:20,ty:15},
+    {id:"zone-sofa",type:"sofa",tx:1,ty:14},
+    {id:"zone-table",type:"coffeeTable",tx:1,ty:16}
+  ];
   function hqItems() {
     // Free the 3 side rooms for real desks; keep the meeting room and main
     // studio furnishing. No fake CSS seat positions or obstructed corridors.
@@ -173,7 +186,7 @@
       const inDigital = it.tx <= 6 && it.ty >= 10;
       const inCompliance = it.tx >= 23 && it.ty >= 10;
       return !(inExec || inDigital || inCompliance);
-    });
+    }).concat(HQ_FUNCTION_ITEMS.map(it=>({...it})));
   }
   function autoDesks(n, ids = []) {
     n = Math.min(n, MAX_EMP);
@@ -518,7 +531,7 @@
   };
 
   globalThis.POLayout = {
-    COLS, ROWS, MAX_EMP, MAX_ITEMS, MAX_DESKS, ENTRANCE, ROOMS, DOORS, DOOR_GROUPS, HQ_WINGS, isHangFaiTeam, FIXED_SPOTS, WALLS, TYPES, TYPE_ORDER, DEFAULT_DIR,
+    COLS, ROWS, MAX_EMP, MAX_ITEMS, MAX_DESKS, ENTRANCE, ROOMS, DOORS, DOOR_GROUPS, HQ_WINGS, HQ_FUNCTION_ITEMS, isHangFaiTeam, FIXED_SPOTS, WALLS, TYPES, TYPE_ORDER, DEFAULT_DIR,
     THEMES, WALL, RUG, PROGRESS_ORDER, WINDOW_TILES, isWall, wallOrder, wallOf, defaultWall, defaultRug, progressWall, withDecor,
     key, defaultItems, deskLayout, autoDesks, build, check, sanitize, toDoc, clone, assignDesks, ensureDesks, findPlace, nextId, scene,
     canDelete, rotate, repair, nearestFree, tilesOf, floorTiles, isFloor: (x, y) => floor.has(key(x, y)),

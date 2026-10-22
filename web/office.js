@@ -737,6 +737,7 @@ class Office {
       }
       b.restore();
     }
+    if(isHq && window.HQZones) window.HQZones.drawFloor(b);
     drawWalls(b, this.blocked, this.doors, t, this.theme, this.wallItems, dim);
     const items = [];
     const faded = (id, fn) => (dim && id === dim ? () => { b.save(); b.globalAlpha = 0.3; fn(); b.restore(); } : fn);
@@ -791,6 +792,7 @@ class Office {
       el.setAttribute?.("aria-label", e.name + " · " + e.status + " · " + e.anim + (e.meet ? " · " + (e.meetingActivity || "前往會議室") : ""));
       el.classList.toggle("selected", e.id === this.selected);
     }
+    if(window.HQZones) window.HQZones.sync(this);
   }
 }
 

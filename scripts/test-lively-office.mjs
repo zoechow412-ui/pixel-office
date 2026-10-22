@@ -5,7 +5,8 @@ const o=h.makeOffice();h.ctx.o=o;
 const ids=['architectural','developer','documentation','electrical-fire','estimating','finance','manager','marketing','plumbing','procurement','project-manager','researcher','sales','video'];
 o.setEmployees(ids.map(id=>({id,name:id,role:id,status:'idle',color:'#61afef'})));
 const walked=new Set(),poses=new Set();let walls=0,maxMoving=0;const start=clock;
-for(let t=0;t<90000;t+=50){o.update(.05,clock=start+t);maxMoving=Math.max(maxMoving,o.emps.filter(e=>e.path.length).length);for(const e of o.emps){poses.add(e.anim);if(e.anim==='walk'){walked.add(e.id);if(o.blocked.has(e.tx+','+e.ty))walls++;}}}
+const seatedFurniture=(x,y)=>o.spots.some(s=>s.tx===x&&s.ty===y&&s.anim==='sitfree');
+for(let t=0;t<90000;t+=50){o.update(.05,clock=start+t);maxMoving=Math.max(maxMoving,o.emps.filter(e=>e.path.length).length);for(const e of o.emps){poses.add(e.anim);if(e.anim==='walk'){walked.add(e.id);if(o.blocked.has(e.tx+','+e.ty)&&!seatedFurniture(e.tx,e.ty))walls++;for(const step of e.path)assert(!o.blocked.has(step.tx+','+step.ty)||seatedFurniture(step.tx,step.ty),'Path cannot cross hard furniture or walls');}}}
 console.log(JSON.stringify({walked:[...walked],poses:[...poses],walls,maxMoving}));
 assert.equal(walked.size,14,'Every idle HQ colleague should walk during a 90 second observation');assert.equal(walls,0,'Walking must stay outside walls and furniture');
 o.setStatus('manager','working');let returned=false;
