@@ -941,6 +941,7 @@ export class Employee extends EventEmitter {
     this.runningFor = key;
     if (this.carry.length) this.inbox.unshift(...this.carry.splice(0));
     const gen = this.generation;
+    if (this.engine !== "codex") throw new Error("Codex-only policy: other engines and API fallback are disabled.");
     if (this.engine === "codex") { void this.runCodex(gen, key); return; }
     if (this.engine === "gemini") { void this.runGemini(gen, key); return; }
     // OpenRouter runs through Claude Code too, pointed at OpenRouter: same tools, permissions and sessions

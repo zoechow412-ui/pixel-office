@@ -8,6 +8,11 @@ Employees now receive two narrow MCP tools: read_project_file (assigned text ref
 
 HQ manual mode no longer silently launches a CEO model turn when task events arrive. The free CEO exception scan remains; repeated status/reason pairs are deduplicated, and new alerts are added to the digest for the next explicit CEO turn. Project reference excerpts are reduced from 24K to 6K characters and the manager receives financial counts rather than all records by default.
 
-Existing shared-note drafts were preserved as actual private Markdown files and recorded against affected tasks without changing their completion status. They remain unverified internal drafts. Gemini remains unconnected. All 13 tasks have not been rerun after this repair; no end-to-end success for every employee is claimed.
+Existing shared-note drafts were preserved as actual private Markdown files and recorded against affected tasks without changing their completion status. They remain unverified internal drafts. Superseded by Zoe’s latest instruction: every employee, including video Mia, now uses Codex with ChatGPT authentication. Gemini and other paid API engines are disabled. All 13 tasks have not been rerun after this repair; no end-to-end success for every employee is claimed.
 
 Checks: typecheck/build, scoped file read/write readback, path/overwrite/plan-write rejection, character knowledge scope, coordinated meeting regression, native Windows no-model sandbox read/write preflight. No new model verification calls were made for this repair.
+
+## Codex-only verification (2026-10-22 HKT)
+
+32 local workspaces and 195 employee definitions (14 in HQ) use gpt-6.1-sol. Hiring defaults to Codex and only lists account Codex models. API rejects non-Codex assignments, other provider changes and API-key setup. Child processes enforce ChatGPT login and remove OPENAI_API_KEY/CODEX_API_KEY. Meeting termination reuses the transcript; no Claude summary call remains. One real read-only coordinated meeting with Ethan and Ava returned three priorities from the actual task board, correctly marking them blocked. The transcript was persisted. This consumes Codex plan quota; it is not unlimited usage. This verification applies to localhost, not a Vercel production deployment. Video scripting is available through Codex; actual video rendering is not established by this change.
+

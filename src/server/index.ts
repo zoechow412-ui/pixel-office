@@ -1,3 +1,4 @@
+import { DEFAULT_CODEX_MODEL } from "./providers.js";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
@@ -572,11 +573,11 @@ function setUnread(e: Employee, n: number) {
 }
 
 const readText = (p?: string) => { try { return p ? fs.readFileSync(p, "utf8") : ""; } catch { return ""; } };
-const MODELS = CLAUDE_MODELS;
+const MODELS: readonly string[] = [];
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 const PERMS = ["default", "acceptEdits", "plan", "dontAsk", "bypassPermissions"] as const;
 const clean = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
-const pickModel = (v: unknown): string | undefined => pick(v, MODELS) ?? (typeof v === "string" && isActiveModel(v) ? v : undefined);
+const pickModel = (v: unknown): string | undefined => (v === undefined || v === "" ? DEFAULT_CODEX_MODEL : typeof v === "string" && isActiveModel(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, list: readonly T[]): T | undefined => (list as readonly string[]).includes(v as string) ? (v as T) : undefined;
 
 const officeInfo = (o: OfficeRt) => ({ id: o.def.id, name: o.def.name, cwd: o.def.cwd, employeesDir: o.def.employeesDir, theme: o.def.theme });
@@ -588,7 +589,7 @@ const clientConfig = () => ({
   locale: locale.code,
   locales: availableLocales(),
   strings: { ui: locale.data.ui, rooms: locale.data.rooms, status: locale.data.status },
-  models: MODELS, extraModels: activeModels().filter((m) => m.provider !== "claude"), efforts: EFFORTS, permissions: PERMS, themes: THEMES,
+  defaultModel: DEFAULT_CODEX_MODEL, codexOnly: true, models: MODELS, extraModels: activeModels().filter((m) => m.provider !== "claude"), efforts: EFFORTS, permissions: PERMS, themes: THEMES,
   project: R.defaultCwd, projectDisplay: displayPath(R.defaultCwd), mode: R.mode, root: R.root, firstRun, memoryFile: settings.memoryFile, multiOffice: settings.multiOffice, defaultOffice: defaultOfficeId(),
   offices: [...offices.values()].map(officeInfo),
 });
@@ -693,11 +694,12 @@ const settingsPayload = async () => ({
 });
 // ---- providers (Settings → Models): which LLM engines are installed and connected, install / sign in / keys from the panel ----
 const isProvider = (v: unknown): v is ProviderId => (PROVIDERS as readonly string[]).includes(String(v));
-const providersPayload = async (fresh = false) => ({ providers: (await providerStatuses(fresh)).map((p) => ({ ...p, canInstall: canInstall(p.id), canLogin: canLogin(p.id) })), extraModels: activeModels().filter((m) => m.provider !== "claude") });
+const providersPayload = async (fresh = false) => ({ providers: (await providerStatuses(fresh)).filter((p) => p.id === "codex").map((p) => ({ ...p, canInstall: canInstall(p.id), canLogin: canLogin(p.id) })), extraModels: activeModels().filter((m) => m.provider !== "claude") });
 app.get("/api/providers", async (req, res) => res.json(await providersPayload(req.query.fresh === "1")));
 app.put("/api/providers/:id", async (req, res) => {
   const id = req.params.id;
   if (!isProvider(id)) return res.status(404).json({ error: "unknown provider" });
+  if (id !== "codex" || req.body?.apiKey !== undefined) return res.status(400).json({ error: "只准使用 Codex ChatGPT 登入；API 金鑰及其他引擎已停用。" });
   const b = (req.body ?? {}) as Record<string, unknown>;
   if (b.enabled !== undefined && typeof b.enabled !== "boolean") return res.status(400).json({ error: t("server.settings.invalid", { key: "enabled" }) });
   if (b.apiKey !== undefined && typeof b.apiKey !== "string") return res.status(400).json({ error: t("server.settings.invalid", { key: "apiKey" }) });
@@ -1040,7 +1042,7 @@ r.get("/hq-summary", (req: OReq, res) => {
   res.json({ceo:{checkedAt:o.store.getMeta<number>("_office","ceoCheckedAt")??null,exceptions:ceoExceptions(o)}, yesterday:{date:yesterday,events}, projects, costs:costsBrief(o),
     attention:o.board.tasks.filter(k => k.status === "review" || k.status === "blocked"),
     sharedNotes:o.board.notes.slice(-12),
-     meetingMode:o.def.id === "hang-fai" ? "coordinated" : "independent"});
+     meetingMode:"coordinated"});
 });
 r.get("/quota", (_req, res) => res.json(getQuota()));
 r.get("/activity", (req: OReq, res) => {
@@ -1349,6 +1351,7 @@ r.post("/employees", (req: OReq, res) => {
   const o = officeOf(req);
   if (!o) return res.status(404).json({ error: t("server.notFound") });
   const b = req.body ?? {};
+  if (!pickModel(b.model)) return res.status(400).json({ error: "只准選擇 Codex 模型。" });
   const name = clean(b.name, 40), role = clean(b.role, 60), prompt = clean(b.prompt, 20000);
   if (!name || !role) return res.status(400).json({ error: t("server.nameRoleRequired") });
   const look = typeof b.look === "object" && b.look ? b.look : undefined;
@@ -1374,6 +1377,7 @@ r.put("/employees/:id", async (req: OReq, res) => {
   const o = officeOf(req), e = empOf(req);
   if (!o || !e) return res.status(404).json({ error: t("server.notFound") });
   const b = req.body ?? {};
+  if (b.model !== undefined && !pickModel(b.model)) return res.status(400).json({ error: "只准選擇 Codex 模型。" });
   const cfg: EmployeeConfig = { ...e.cfg };
   if (b.name !== undefined) cfg.name = clean(b.name, 40) || cfg.name;
   if (b.role !== undefined) cfg.role = clean(b.role, 60) || cfg.role;
@@ -1584,7 +1588,7 @@ function startMeeting(o: OfficeRt, topic: string, ids: string[], interruptBusy: 
   if (o.meeting?.active) return;
   const people = ids.map((id) => o.employees.get(id)).filter((e): e is Employee => !!e && !e.inMeeting);
   if (!people.length) return;
-  const m = new Meeting(topic, people, o.store, o.def.cwd, o.def.id === "hang-fai");
+  const m = new Meeting(topic, people, o.store, o.def.cwd, true);
   o.meeting = m;
   const office = o.def.id;
   m.on("state", () => { if (o.meeting === m) broadcast({ type: "meeting", office, meeting: m.state() }); });

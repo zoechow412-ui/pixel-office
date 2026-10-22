@@ -38,7 +38,7 @@ try {
   assert.match(fs.readFileSync(d,"utf8"),/DERFOE private records/);
   assert.doesNotMatch(fs.readFileSync(bh,"utf8"),/DERFOE private records/);
   assert.equal(JSON.parse(fs.readFileSync(path.join(sandbox,".pixel-office/config.json"))).offices.length,32,"No duplicate project tabs");
-  assert.match(fs.readFileSync(path.join(base,"derfoe/video/agent.md"),"utf8"),/model: gemini-2.5-flash/);
+  assert.match(fs.readFileSync(path.join(base,"derfoe/video/agent.md"),"utf8"),/model: gpt-6.1-sol/);
   assert.match(fs.readFileSync(path.join(base,"bhu-housing/plumbing/agent.md"),"utf8"),/model: gpt-6.1-sol/);
   assert.match(fs.readFileSync(path.join(base,"tailoring/developer/agent.md"),"utf8"),/訂製西裝/);
   assert.match(fs.readFileSync(path.join(base,"wp-waterproof/researcher/agent.md"),"utf8"),/WP550/);
@@ -50,11 +50,11 @@ try {
     for(const employee of fs.readdirSync(path.join(base,office.id))){
       const data=fs.readFileSync(path.join(base,office.id,employee,"agent.md"),"utf8");
       assert.match(data,/model: /,office.id+" "+employee+" missing model");
-      if(employee==="video")assert.match(data,/model: gemini-2.5-flash/,office.id+" video must use Gemini");
+      if(employee==="video")assert.match(data,/model: gpt-6.1-sol/,office.id+" video must use Codex");
       else assert.match(data,/model: gpt-6.1-sol/,office.id+" "+employee+" must use Codex");
     }
   }
-  console.log("32 dedicated workspaces, preserved memories and Codex/Gemini role assignments verified.");
+  console.log("32 dedicated workspaces, preserved memories and Codex-only role assignments verified.");
 } finally {
   fs.rmSync(sandbox,{recursive:true,force:true});
 }

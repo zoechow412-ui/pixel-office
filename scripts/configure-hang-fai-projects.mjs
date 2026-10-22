@@ -181,4 +181,4 @@ if(!fs.existsSync(configFile)||fs.readFileSync(configFile,"utf8")!==updated){
   if(fs.existsSync(configFile)&&!fs.existsSync(backup))fs.copyFileSync(configFile,backup);
   fs.writeFileSync(configFile,updated,{mode:0o600});
 }
-console.log("恒輝 AI 總部：已核對 "+projects.length+" 個獨立工作空間（含 HQ）；13 Codex 專業員工與 Gemini 影片職位按所屬專案分組。");
+console.log("恒輝 AI 總部：已核對 "+projects.length+" 個獨立工作空間（含 HQ）；14 Codex 專業員工（包括影片職位）按所屬專案分組。");

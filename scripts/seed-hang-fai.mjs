@@ -17,7 +17,7 @@ const common = [
 ];
 // Verified with the owner's Codex model catalogue and a real read-only reply.
 const codex = process.env.HANG_FAI_CODEX_MODEL || "gpt-6.1-sol";
-const gemini = "gemini-2.5-flash";
+const gemini = "gpt-6.1-sol";
 const roster = [
   {id:"manager",name:"01 AI 總經理",role:"統籌、質量審核及審批管理",color:"#edc47f",model:codex,manager:true,
    task:"老闆唯一指揮窗口。按客戶→評估→視察→查圖→合規→報價→施工→核證→BHU→交付順序分派工作；要求同事附原稿、事實依據與風險；彙整狀態並等待老闆批准對外動作。不可自行稱已有模型登入或服務已完成。"},
@@ -45,7 +45,7 @@ const roster = [
    task:"整理報價、invoice、receipt、合同、分期收款、工程成本、分判與毛利。原始文件及公司名稱必須維持客戶指定格式，改票據只改指定欄位；財務數據以實際資料為準，未經老闆批准不能收付款或發送。"},
   {id:"developer",name:"13 AI IT 程式員",role:"網站、APP、CRM、報價系統、AI 辦公室",color:"#7cb3f2",model:codex,
    task:"維護 UNIBRIGHT Ops、簡樸房網頁、代駕 APP、GitHub、AI office 及報價編輯工具。只改獲指定的 repo/branch，先保存使用中功能，再做 build、CI、實機驗收；報價／訂單必須可編輯品項、數量、單價、增刪。不得將機密寫入 repo；部署需防止未登入者操作 agent 的 shell。"},
-  {id:"video",name:"14 AI 影片製作",role:"Gemini 專責廣告影片分鏡及剪輯規劃",color:"#f0a2a9",model:gemini,
+  {id:"video",name:"14 AI 影片製作",role:"Codex 專責廣告影片分鏡及剪輯規劃",color:"#f0a2a9",model:gemini,
    task:"只此職位使用 Gemini。負責恒輝簡樸房廣告、Facebook/IG 影片、粵語旁白、真人感港式場景、節奏、16:9 分鏡／腳本及分段指令。分鏡要跟劇情和原人物設定，避免自行改寫原圖內容。Gemini CLI 僅可生成文本／分鏡規劃；影片渲染需另接支援的影音工具，不可以假裝已輸出影片。"}
 ];
 // Adapted Agency Agents role-process patterns. Source repo MIT; no third-party prompt is executed as instructions.
@@ -281,4 +281,4 @@ for(const a of roster){
   if(!fs.existsSync(memory)) fs.writeFileSync(memory,"# "+a.name+"｜工作記憶\n");
 }
 fs.writeFileSync(path.join(root,".pixel-office","hq-seeded"),"14-person roster seeded; "+new Date().toISOString()+"\n");
-console.log("恒輝 AI 總部：已核對及同步 "+roster.length+" 名職位（13 Codex，1 Gemini 影片）。模型授權仍須另行驗證。");
+console.log("恒輝 AI 總部：已核對及同步 "+roster.length+" 名職位（14 Codex）。模型授權仍須另行驗證。");

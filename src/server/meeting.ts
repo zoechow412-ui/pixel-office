@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import { EventEmitter } from "node:events";
-import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { Employee, ImageInput } from "./employee.js";
 import type { Store } from "./store.js";
 import { t } from "./runtime.js";
@@ -221,27 +220,9 @@ export class Meeting extends EventEmitter {
 
   // A small one-shot model call with no tools; the result is a summary plus follow-up tasks per person.
   private async summarize() {
-    const names = this.people.map((e) => e.cfg.name).join(", ");
-    const q = query({
-      prompt: t("server.meeting.summaryPrompt", { topic: this.topic || t("server.meeting.untitled"), names, transcript: this.plainTranscript() }),
-      options: { cwd: this.cwd, model: "claude-haiku-4-5", tools: [], maxTurns: 1, persistSession: false, settingSources: [], systemPrompt: t("server.meeting.summarySystem") },
-    });
-    let out = "";
-    for await (const m of q) if (m.type === "result") {
-      if (m.subtype === "success") out = m.result;
-      if (m.total_cost_usd > 0) this.emit("cost", m.total_cost_usd, "claude-haiku-4-5"); // the office's ledger counts the summary too
-    }
-    const json = out.match(/\{[\s\S]*\}/);
-    let parsed: { summary?: unknown; tasks?: unknown } = {};
-    try { parsed = json ? JSON.parse(json[0]) : {}; } catch {}
-    this.summary = typeof parsed.summary === "string" && parsed.summary.trim() ? parsed.summary.trim() : out.trim();
-    const tasks: MeetingTask[] = [];
-    if (Array.isArray(parsed.tasks)) for (const x of parsed.tasks) {
-      const to = String((x as Record<string, unknown>)?.to ?? "").trim().toLowerCase(), task = String((x as Record<string, unknown>)?.task ?? "").trim();
-      const e = this.people.find((p) => p.cfg.name.toLowerCase() === to || p.cfg.id === to);
-      if (e && task) tasks.push({ to: e.cfg.id, name: e.cfg.name, task });
-    }
-    this.tasks = tasks;
+    // Ending a meeting reuses its recorded discussion, without another provider call.
+    this.summary = this.summary || this.plainTranscript();
+    this.tasks = [];
   }
 
   private persist() {

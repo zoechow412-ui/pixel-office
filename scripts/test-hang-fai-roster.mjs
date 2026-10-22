@@ -27,7 +27,7 @@ try{
     assert.match(file, /Agency Agents 專家模板/);
     assert.match(file, /https:\/\/github.com\/msitarzewski\/agency-agents/);
     assert.match(file,/model: /);
-    if(id==="video") assert.match(file,/model: gemini-2.5-flash/);
+    if(id==="video") assert.match(file,/model: gpt-6.1-sol/);
     else assert.match(file,/model: gpt-6.1-sol/);
   }
   const memory=path.join(base,"manager/memory.md");
@@ -41,5 +41,5 @@ try{
   fs.renameSync(path.join(base,"manager"),old);
   run();
   assert.ok(fs.existsSync(path.join(base,"manager/agent.md")),"Migrate previously misplaced manager");
-  console.log("Agency Agents HK roster tests passed: 13 Codex + 1 Gemini video.");
+  console.log("Agency Agents HK roster tests passed: 14 Codex.");
 }finally{fs.rmSync(tmp,{recursive:true,force:true});}
