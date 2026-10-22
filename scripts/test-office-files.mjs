@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
+import {officeToolDefs} from '../dist/server/office-tools.js';import {initRuntime} from '../dist/server/runtime.js';
+const cwd=fs.mkdtempSync(path.join(os.tmpdir(),'hq-draft-'));
+initRuntime({offices:[]},{t:k=>k});fs.writeFileSync(path.join(cwd,'PROJECT.md'),'source record');
+const self={cfg:{id:'developer',officeId:'test',cwd},inMeetingTurn:false};
+const tools=officeToolDefs(self,{board:()=>({}),list:()=>[]});const call=(name,arg)=>tools.find(t=>t.name===name).handler(arg,{});
+assert.equal((await call('save_draft',{name:'../escape.md',content:'bad'})).isError,true);
+let r=await call('save_draft',{name:'draft-v1.md',content:'actual draft'});assert.equal(JSON.parse(r.content[0].text).verified,true);
+assert.equal(fs.readFileSync(path.join(cwd,'.pixel-office/deliverables/developer/draft-v1.md'),'utf8'),'actual draft');
+assert.equal((await call('save_draft',{name:'draft-v1.md',content:'overwrite'})).isError,true);
+self.cfg.permissionMode='plan';assert.equal((await call('save_draft',{name:'blocked.md',content:'bad'})).isError,true);
+assert.equal((await call('read_project_file',{project:'test',file:'../.env'})).isError,true);
+r=await call('read_project_file',{project:'test',file:'PROJECT.md'});assert.equal(JSON.parse(r.content[0].text).text,'source record');
+console.log('Draft saved and read back; traversal, overwrite and read-only writes rejected; project source read without model or shell.');

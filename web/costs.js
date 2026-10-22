@@ -30,9 +30,9 @@ const costsUI = (() => {
     if (!c) return;
     const { daily, pct, reached } = capInfo(c);
     el.className = "strip-chip" + (reached ? " stop" : pct >= 0.8 ? " warn" : "");
-    el.innerHTML = `${escapeHtml(usd(c.today))}${daily ? `<span class="dim"> / ${escapeHtml(usd(daily))}</span>` : ""} <span class="lbl">${escapeHtml(t(reached ? "ui.strip.stopped" : "ui.strip.today"))}</span>`;
+    el.innerHTML = `估算 ${escapeHtml(usd(c.today))}${daily ? `<span class="dim"> / ${escapeHtml(usd(daily))}</span>` : ""} <span class="lbl">${escapeHtml(t(reached ? "ui.strip.stopped" : "ui.strip.today"))}</span>`;
     const codex = c.todayTokens?.codex;
-    el.title = [t("ui.strip.spendTip"), codex ? t("ui.strip.codexToday", { tokens: fmtTokens(codex) }) : "", reached ? t("ui.strip.capReached") : ""].filter(Boolean).join("\n");
+    el.title = ["此金額含按 API 價格換算的 Codex 估算，不是扣款或帳單；實際計劃用量另計。",t("ui.strip.spendTip"), codex ? t("ui.strip.codexToday", { tokens: fmtTokens(codex) }) : "", reached ? t("ui.strip.capReached") : ""].filter(Boolean).join("\n");
   }
 
   const when = (ts) => (ts ? new Date(ts).toLocaleString(LOCALE_TAG, { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "");

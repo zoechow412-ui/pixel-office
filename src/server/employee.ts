@@ -925,6 +925,7 @@ export class Employee extends EventEmitter {
     if (this.colleagues) parts.push(t(this.cfg.manager ? "server.board.promptManager" : "server.board.prompt"));
     if (this.cfg.worktree && this.cfg.baseCwd && this.cfg.baseCwd !== this.cfg.cwd) parts.push(t("server.worktree.prompt", { branch: `po/${this.cfg.id}`, base: this.cfg.baseCwd }));
     parts.push(t("server.efficiency"));
+    parts.push("本機原稿優先用 office.read_project_file 工具讀取；內部文件草稿用 office.save_draft 保存並核對 verified 回覆。這些工具不需要 shell。若工具也失敗，明確記錄一次錯誤，勿重複空跑。資料缺口不代表禁止保存已標示待覆核的內部草稿；正式對外發送、財務承諾與發布仍須老闆明確批准。");
     if (this.cfg.memoryFile) {
       // the full path: a relative one (../../../…) stops pointing anywhere the moment the employee cd's into a subfolder
       const rel = this.cfg.memoryFile;

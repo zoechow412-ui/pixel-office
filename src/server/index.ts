@@ -341,6 +341,8 @@ function managerNeeded(o: OfficeRt): boolean {
   return mode === "auto" ? waiting || unstarted || (!running && pm.hasNews) : !running && (waiting || pm.hasNews);
 }
 function nudgeManager(o: OfficeRt) {
+  // Manual HQ mode records exceptions but never silently spends a CEO turn.
+  if (o.def.id === "hang-fai" && modeOf(o) === "manual") return;
   if (!managerNeeded(o)) return;
   wokeManager(o, t(`server.events.wake.${modeOf(o)}`));
   managerOf(o)!.sendWhenFree(t(`server.board.wake.${modeOf(o)}`), () => managerNeeded(o));
@@ -371,9 +373,9 @@ function superviseCeo(o: OfficeRt) {
   o.store.setMeta("_office","ceoCheckedAt",now);
   if(!pm || !current.length || capReached(o))return;
   const seen=o.store.getMeta<Record<string,string>>("_office","ceoFollowups")??{};
-  const changed=current.filter(k=>seen[k.office+":"+k.id]!==`${k.status}:${k.updated}`);
+  const changed=current.filter(k=>seen[k.office+":"+k.id]!==`${k.status}:${k.reason}`);
   if(!changed.length)return;
-  for(const k of changed)seen[k.office+":"+k.id]=`${k.status}:${k.updated}`;
+  for(const k of changed)seen[k.office+":"+k.id]=`${k.status}:${k.reason}`;
   o.store.setMeta("_office","ceoFollowups",seen);
   pm.addDigest("CEO 追蹤工作："+changed.map(k=>`[${k.officeName}] #${k.id} ${k.title}，負責 ${k.owner}，${k.reason}`).join("；")+
     "。逐項核對最新成果、負責人、下一步及受阻原因。未驗證不得標完成；先處理現有任務，不自行開新研究或寄信。需要老闆決定時列出具體事項。");

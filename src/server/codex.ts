@@ -74,11 +74,17 @@ export interface CodexResult { ok: boolean; error?: string; inputTokens: number;
 
 const toml = (v: unknown) => JSON.stringify(v); // JSON strings and arrays of strings are valid TOML
 
+// This office explicitly uses the existing ChatGPT login, never an inherited API key.
+function codexPlanEnv() {
+  const env={...process.env};delete env.OPENAI_API_KEY;delete env.CODEX_API_KEY;return env;
+}
+
 // One turn. Resolves when the process ends; `kill` stops it (the boss pressed stop).
 export function runCodexTurn(turn: CodexTurn, h: CodexHandlers): { done: Promise<CodexResult>; kill: () => void } {
   const args = ["exec"];
   if (turn.thread) args.push("resume", turn.thread);
-  args.push("--json", "--skip-git-repo-check", "--ignore-user-config", "-m", turn.model);
+  args.push("--json", "--skip-git-repo-check", "--ignore-user-config", "-c", 'forced_login_method="chatgpt"', "-c", 'approval_policy="never"', "-m", turn.model);
+  if (process.platform === "win32") args.push("-c", 'windows.sandbox="elevated"');
   if (!turn.thread) args.push("-C", turn.cwd);
   if (turn.persist === false) args.push("--ephemeral");
   if (turn.sandbox === "full") args.push("--dangerously-bypass-approvals-and-sandbox");
@@ -106,7 +112,7 @@ export function runCodexTurn(turn: CodexTurn, h: CodexHandlers): { done: Promise
   const done = new Promise<CodexResult>((resolve) => {
     const res: CodexResult = { ok: false, inputTokens: 0, outputTokens: 0, cachedTokens: 0, calls: 1 };
     let buf = "", err = "";
-    try { child = spawn("codex", args, { cwd: turn.cwd, stdio: ["pipe", "pipe", "pipe"], env: process.env }); }
+    try { child = spawn("codex", args, { cwd: turn.cwd, stdio: ["pipe", "pipe", "pipe"], env: codexPlanEnv() }); }
     catch (e) { resolve({ ...res, error: (e as Error).message }); return; }
     child.on("error", (e) => resolve({ ...res, error: (e as NodeJS.ErrnoException).code === "ENOENT" ? "codex is not installed (npm i -g @openai/codex, then codex login)" : e.message }));
     child.stdin?.end(input);
