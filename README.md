@@ -1,3 +1,20 @@
+# 恒輝 AI 總部 · 一鍵啟動 👨‍💻
+
+> 以原版 Pixel Office 為核心，加入恒輝 AI 總部營運介面（第一階段）。原版功能及原作者授權保留。
+
+### 👉 [按此開啟我的私人 AI Office](https://codespaces.new/zoechow412-ui/pixel-office/tree/feature/hang-fai-ai-hq-dashboard)
+
+按入 GitHub 後選擇 **Create codespace**。系統會自動安裝、啟動，並嘗試開啟私人預覽網頁（Port 4747）。**毋須輸入程式指令。**
+
+- 使用 **Codex + Gemini**：登入各自帳戶／提供所需 API 金鑰後，才會真正執行任務。
+- 預覽畫面仍使用原版 2D 動畫，3D 遊戲場景未完成。
+- 原版系統並無使用者登入機制，**嚴禁將預覽 Port 4747 設為 Public**。Codespaces 預設私人預覽。
+- GitHub Codespaces 可能按 GitHub 帳戶方案收費；建立前請留意 GitHub 畫面顯示嘅用量／費用。
+
+**[查看目前開發進度](HANG-FAI-HQ.md)**
+
+---
+
 # Pixel Office
 
 **A pixel-art office for your AI agents.** Hire AI employees with a game-style character creator, give each one a job, watch them walk to their desks and work, and teach them things they never forget.

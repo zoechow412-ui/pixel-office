@@ -16,8 +16,11 @@ const byKey = (a, b) => (a.key < b.key ? -1 : 1);
 const h = loadOffice();
 const L = h.run("POLayout");
 const themes = J(h.run("THEME_NAMES"));
-assert.deepEqual(themes.sort(), Object.keys(fx.themes).sort(), "same themes");
-for (const th of themes) {
+assert.deepEqual(themes.filter(th => th !== "space").sort(), Object.keys(fx.themes).sort(), "original themes preserved");
+const spaceStatic = h.run('buildStaticFor("space")');
+assert.deepEqual([...spaceStatic.blocked].sort(), fx.themes.default.blocked, "space preserves classic collision geometry");
+assert.deepEqual([...spaceStatic.doors].sort(), fx.themes.default.doors, "space preserves classic doors");
+for (const th of Object.keys(fx.themes)) {
   const st = h.run(`buildStaticFor(${JSON.stringify(th)})`);
   const want = fx.themes[th];
   assert.deepEqual([...st.blocked].sort(), want.blocked, `${th}: blocked tiles`);

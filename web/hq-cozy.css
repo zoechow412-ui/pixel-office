@@ -1,0 +1,35 @@
+/* Warm miniature studio; keeps the approved floor, uniforms and four divisions. */
+body.hq { overflow:hidden; background:#101a30; }
+body.hq .hq-sidebar {min-width:0;overflow-x:hidden;background:linear-gradient(160deg,#202e49,#111e35 65%);}
+body.hq .topbar {min-width:0;overflow-x:auto;scrollbar-width:none;background:linear-gradient(100deg,#22314b,#18263e);}
+body.hq .stage {padding-top:108px;background:radial-gradient(ellipse at 50% 10%,#32445d66,transparent 65%),linear-gradient(155deg,#1b2d45,#122039);}
+body.hq .stage::before {background-size:24px 24px;opacity:.22;}
+body.hq .hq-kicker {color:#e9c9a1;letter-spacing:.16em;}
+body.hq .hq-stage-heading p {color:#b5c0cf;}
+body.hq .office-wrap {border:5px solid #b9c8cc;border-radius:20px;box-shadow:0 7px 0 #718795,0 11px 0 #152237,0 24px 65px #0005;overflow:hidden;}
+body.hq #office {border-radius:11px;filter:brightness(1.06) saturate(1.08);}
+body.hq .label {background:#fff0d9e8;color:#4f4650;padding:2px 6px;border:1px solid #f9e3bb;border-radius:6px;text-shadow:none;font:800 10px/1.3 "Manrope","Noto Sans TC",sans-serif;box-shadow:0 2px 0 #3b30482b;}
+body.hq .label small {display:none;}
+body.hq .label.selected {background:#e9d3ef;border-color:#b59ac2;color:#4f3e61;}
+body.hq .room-label {display:none;}
+body.hq .roster {max-width:100%;justify-content:center;}
+body.hq .roster-chip {border-radius:16px;background:#273b53;border-color:#5b718469;}
+body.hq .roster-chip.selected {background:#55445f;border-color:#d8b5d0;}
+body.hq .roster-chip .rs {color:#bfcbd1;}
+body.hq .hq-nav button.active {border-radius:14px;background:linear-gradient(100deg,#46526d88,#34465a77);box-shadow:inset 3px 0 #e5c99d;}
+.hq-character-knowledge {flex:none;min-height:40px;max-height:260px;box-sizing:border-box;overflow:auto;border-bottom:1px solid #6b7f9555;background:#24334c;color:#e3ded7;padding:10px 16px;font-size:11px;}
+body.hq .chat:has(>.hq-character-knowledge) {grid-template-rows:auto auto minmax(0,1fr) auto auto;}
+.hq-character-knowledge>summary {cursor:pointer;color:#e5c9e0;font-weight:750;}
+.hq-knowledge-list>p {color:#b9c8d6;font-size:11px;line-height:1.7;}
+.hq-knowledge-project {padding:9px 0;border-top:1px solid #7990a52c;}
+.hq-knowledge-project summary {font-weight:700;cursor:pointer;color:#f1dfbc;}
+.hq-knowledge-project p {font-size:11px;line-height:1.7;white-space:pre-wrap;color:#c8d2dc;overflow-wrap:anywhere;}
+.hq-knowledge-project small {display:block;margin-top:8px;color:#b8adbe;}
+@media(min-width:1400px){body.hq{grid-template-columns:218px minmax(0,1fr) 280px;}body.hq .hq-inspector{display:block;}}
+@media(min-width:900px) and (max-width:1399px){body.hq{grid-template-columns:200px minmax(0,1fr);}body.hq .topbar{grid-column:2;}body.hq .hq-inspector{display:none;}}
+@media(max-width:899px){body.hq .stage{padding:95px 12px 20px;}body.hq .hq-sidebar{overflow-x:hidden;}body.hq .office-wrap{border-width:3px;border-radius:13px;}}
+@media(max-width:599px){body.hq .stage{padding-top:88px;}body.hq .hq-stage-heading{left:14px;right:14px;}body.hq .hq-kicker{font-size:8px;}body.hq .hq-stage-heading h1{font-size:17px;}body.hq .hq-live-pill{font-size:8px;}body.hq .label{font-size:8px;padding:1px 3px;}}
+
+.hq-command{margin:14px 0;padding:14px;border:1px solid #426b89;border-radius:14px;background:#10253d;color:#dfefff}
+.hq-command h3{margin:0 0 8px}.hq-command button{padding:8px 12px;margin:4px;border:1px solid #49799b;border-radius:8px;background:#1d3c5c;color:#e2f6ff;cursor:pointer}
+.hq-command p{line-height:1.6;font-size:12px}.hq-command ul{padding-left:20px;font-size:12px;line-height:1.7}

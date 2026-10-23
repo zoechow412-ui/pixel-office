@@ -390,6 +390,7 @@ function renderHead(e) {
   $("chatAvatar").href = profileUrl(e.id);
   $("btnProfile").href = profileUrl(e.id);
   $("chatName").textContent = e.name;
+  window.dispatchEvent(new CustomEvent("hq-person-selected", { detail: { id: e.id, office: state.office } }));
   $("chatModel").textContent = modelName(e.model);
   $("chatModel").title = e.model || "";
   $("chatRole").textContent = e.role;

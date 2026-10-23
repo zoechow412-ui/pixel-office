@@ -1,3 +1,4 @@
+import { DEFAULT_CODEX_MODEL, engineOf } from "./providers.js";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import os from "node:os";
@@ -117,7 +118,7 @@ export function loadEmployee(dir: string, index: number, office: OfficeDef): Emp
     memoryFile: findMemoryFile(dir),
     pluginDir: dir,
     look: parseJsonMaybe<Record<string, unknown>>(meta.look) ?? defaultLook(id, color),
-    model: meta.model,
+    model: engineOf(meta.model) === "codex" ? meta.model ?? DEFAULT_CODEX_MODEL : DEFAULT_CODEX_MODEL,
     allowedTools: tools,
     permissionMode: meta.permissionMode as EmployeeConfig["permissionMode"],
     refreshHours: meta.refreshHours !== undefined ? Number(meta.refreshHours) : settings.refreshHours,
@@ -191,7 +192,7 @@ export function createEmployeeDir(office: OfficeDef, input: { name: string; role
   const cfg: EmployeeConfig = {
     id, name: input.name, role: input.role, color: input.color, look: input.look,
     systemPrompt: input.prompt, cwd, dir, agentFile: path.join(dir, "agent.md"), officeId: office.id,
-    model: input.model, effort: input.effort, permissionMode: input.permissionMode,
+    model: engineOf(input.model) === "codex" ? input.model ?? DEFAULT_CODEX_MODEL : DEFAULT_CODEX_MODEL, effort: input.effort, permissionMode: input.permissionMode,
     hired: new Date().toISOString().slice(0, 10), refreshHours,
   };
   writeAgentFile(cfg);

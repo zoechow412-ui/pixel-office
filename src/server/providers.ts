@@ -17,6 +17,7 @@ import { codexModels } from "./codex.js";
 // On/off switches and model lists live in config.json (`providers`); API keys in <dataDir>/secrets.json (0600), which is
 // never in git, not even in project mode, where config.json is.
 
+export const DEFAULT_CODEX_MODEL = "gpt-6.1-sol";
 export const PROVIDERS = ["claude", "codex", "gemini", "openrouter"] as const;
 export type ProviderId = (typeof PROVIDERS)[number];
 export type Engine = ProviderId;
@@ -52,7 +53,7 @@ export const OPENROUTER_BASE = "https://openrouter.ai/api";
 // Which engine a model id belongs to. OpenRouter ids carry a prefix ("openrouter:openai/gpt-5"), Gemini ids start with
 // "gemini-", Codex ids come from the Codex account (or look like one); everything else is Claude.
 export function engineOf(model?: string): Engine {
-  if (!model) return "claude";
+  if (!model) return "codex";
   if (model.startsWith(OPENROUTER_PREFIX)) return "openrouter";
   if (/^gemini-/.test(model)) return "gemini";
   if (codexModels().some((m) => m.id === model) || /^(gpt-|codex-)/.test(model)) return "codex";
@@ -244,12 +245,12 @@ function modelsOf(id: ProviderId): ModelEntry[] {
   return custom.map((slug) => ({ id: OPENROUTER_PREFIX + slug, name: orNames.get(slug) ?? slug, desc: slug, provider: id }));
 }
 
-// Active = switched on and connected, as last probed. The snapshot is synchronous: pages and validation read it.
+// Connection status is separate from model selection: an expired login must never switch engines.
 export function isActive(id: ProviderId) {
   const p = probed.get(id)?.value;
   return enabledOf(id) && !!p?.connected;
 }
-export function activeModels(): ModelEntry[] { return PROVIDERS.filter(isActive).flatMap(modelsOf); }
+export function activeModels(): ModelEntry[] { return PROVIDERS.filter((id) => id === "codex").flatMap(modelsOf); }
 export const isActiveModel = (model: string) => activeModels().some((m) => m.id === model);
 
 export async function providerStatuses(fresh = false): Promise<ProviderStatus[]> {

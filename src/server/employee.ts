@@ -26,6 +26,7 @@ import { listSkills, listProjectSkills } from "./agents.js";
 import { claudeSession, readOnlySession } from "./integrations.js";
 import { fromClaudeRateLimit, fromClaudeUsage, fromCodexThread, claudeUsageDue } from "./quota.js";
 import type { CostKind } from "./ledger.js";
+import { characterKnowledgePrompt } from "./character-knowledge.js";
 
 export type Status = "idle" | "working" | "waiting" | "error" | "sick";
 
@@ -917,11 +918,14 @@ export class Employee extends EventEmitter {
 
   private buildPrompt(): string {
     const parts = [this.cfg.systemPrompt];
+    const knowledge = characterKnowledgePrompt(this.cfg, getSettings().offices, getSettings().dataDir);
+    if (knowledge) parts.push(knowledge);
     const others = this.colleagues?.list().filter((e) => e !== this) ?? [];
     if (others.length) parts.push(t("server.office.prompt", { list: others.map((e) => `- ${e.cfg.name} — ${e.cfg.role}${e.cfg.manager ? " — " + t("server.board.managerTag") : ""}`).join("\n") }));
     if (this.colleagues) parts.push(t(this.cfg.manager ? "server.board.promptManager" : "server.board.prompt"));
     if (this.cfg.worktree && this.cfg.baseCwd && this.cfg.baseCwd !== this.cfg.cwd) parts.push(t("server.worktree.prompt", { branch: `po/${this.cfg.id}`, base: this.cfg.baseCwd }));
     parts.push(t("server.efficiency"));
+    parts.push("先用 office.search_project_documents 搜尋所屬專案原稿、已匯入文件及覆核文字，回覆附來源；可用 office.read_project_file 讀原稿。財務核算可用 office.calculate_quote（只計數，不改原系統）；內部文件草稿用 office.save_draft 保存並核對 verified 回覆。這些工具不需要 shell。若工具也失敗，明確記錄一次錯誤，勿重複空跑。資料缺口不代表禁止保存已標示待覆核的內部草稿；正式對外發送、財務承諾與發布仍須老闆明確批准。");
     if (this.cfg.memoryFile) {
       // the full path: a relative one (../../../…) stops pointing anywhere the moment the employee cd's into a subfolder
       const rel = this.cfg.memoryFile;
@@ -937,6 +941,7 @@ export class Employee extends EventEmitter {
     this.runningFor = key;
     if (this.carry.length) this.inbox.unshift(...this.carry.splice(0));
     const gen = this.generation;
+    if (this.engine !== "codex") throw new Error("Codex-only policy: other engines and API fallback are disabled.");
     if (this.engine === "codex") { void this.runCodex(gen, key); return; }
     if (this.engine === "gemini") { void this.runGemini(gen, key); return; }
     // OpenRouter runs through Claude Code too, pointed at OpenRouter: same tools, permissions and sessions
@@ -1331,6 +1336,7 @@ export class Employee extends EventEmitter {
   // A turn that failed because the sign-in / key is refused: the provider is marked as not connected (Settings → Models says so and
   // offers the sign-in again) and the message says what to do, not just "unauthorized".
   private engineError(engine: "codex" | "gemini", error: string): string {
+    if (engine === "codex" && /\b403\b/.test(error) && /<!doctype|<html|<head|<meta/i.test(error)) return "Codex 請求被網絡或服務入口拒絕（HTTP 403 HTML）；未證實登入失效。保留現有登入及任務，檢查連線後再試。";
     if (!AUTH_ERROR.test(error)) return error;
     markAuthFailed(engine);
     return tt(`server.${engine}.authFailed`, engine === "codex" ? "Codex sign-in is no longer valid ({detail}). Sign in again in Settings → Models." : "The Gemini API key was refused ({detail}). Check it in Settings → Models.", { detail: error.slice(0, 120) });

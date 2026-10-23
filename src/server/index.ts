@@ -1,3 +1,5 @@
+import { DEFAULT_CODEX_MODEL } from "./providers.js";
+import { registerLocalWorkbench } from "./local-workbench.js";
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
@@ -20,8 +22,10 @@ import { initSkills, skillCatalog, viewOfSkill, skillById, previewSkill, install
 import { CATEGORIES, initIntegrations, listIntegrations, saveIntegration, checkIntegration, removeIntegration, entryOf, startOAuth, finishOAuth, addCustom, gateway, setOwnClient } from "./integrations.js";
 import { CLAUDE_MODELS, PROVIDERS, activeModels, isActiveModel, initProviders, providersReady, providerStatuses, updateProvider, installProvider, loginProvider, refreshProvider, canInstall, canLogin, type ProviderId } from "./providers.js";
 import { createGuard, isLoopbackHost } from "./security.js";
+import { createOwnerAuth, allowEmbeddedOwnerRequest } from "./owner-auth.js";
+import { characterProjects } from "./character-knowledge.js";
 import { acquireLock } from "./lock.js";
-import { writeFileAtomicSync } from "./fsutil.js";
+import { readJsonSafe, writeFileAtomicSync } from "./fsutil.js";
 import { Ledger, dayKey, type Cap } from "./ledger.js";
 import { initPrices, pricesFile, customPrices, parsePrices, saveCustomPrices, DEFAULT_PRICES } from "./prices.js";
 import { EventLog, type OfficeEvent } from "./events.js";
@@ -339,6 +343,8 @@ function managerNeeded(o: OfficeRt): boolean {
   return mode === "auto" ? waiting || unstarted || (!running && pm.hasNews) : !running && (waiting || pm.hasNews);
 }
 function nudgeManager(o: OfficeRt) {
+  // Manual HQ mode records exceptions but never silently spends a CEO turn.
+  if (o.def.id === "hang-fai" && modeOf(o) === "manual") return;
   if (!managerNeeded(o)) return;
   wokeManager(o, t(`server.events.wake.${modeOf(o)}`));
   managerOf(o)!.sendWhenFree(t(`server.board.wake.${modeOf(o)}`), () => managerNeeded(o));
@@ -351,6 +357,38 @@ function wokeManager(o: OfficeRt, reason: string) {
   lastWoken.set(o.def.id, now);
   logEvent(o, { kind: "pm_woken", emp: managerOf(o)?.cfg.id, by: "office", data: { reason } });
 }
+
+// CEO supervision: deterministic scans are free of model calls. A changed exception
+// queues a digest for the next user-requested turn, without starting a model.
+function ceoExceptions(o: OfficeRt, now=Date.now()) {
+  return (o.def.id === "hang-fai" ? [...offices.values()] : [o]).flatMap(source => {
+    const taskIssues=source.board.tasks.filter(k=>k.status!=="done").flatMap(k=>{
+    const owner=source.employees.get(k.owner);
+    const reason=!owner ? "未有有效負責人" : k.status==="blocked" ? "工作受阻" : k.status==="review" ? "成果待審核" :
+      k.status==="doing" && now-k.updated>30*60e3 ? "30分鐘未更新進度" :
+      k.status==="todo" && now-k.updated>24*60*60e3 ? "待辦超過一天" : "";
+    return reason ? [{office:source.def.id,officeName:source.def.name,id:k.id,title:k.title,owner:owner?.cfg.name??k.owner,status:k.status,reason,updated:k.updated}] : [];
+  });
+    const local=readJsonSafe<{events?:Array<{id:string;title:string;owner:string;at:string;done:boolean}>}>(path.join(source.store.dir,"local-workbench.json"),()=>({events:[]}));
+    const due=(local.events??[]).filter(e=>!e.done&&Date.parse(e.at)<=now+86400000).map(e=>({office:source.def.id,officeName:source.def.name,id:"calendar:"+e.id,title:e.title,owner:e.owner||"未填負責人",status:"todo",reason:Date.parse(e.at)<now?"日程已逾期":"日程24小時內到期",updated:Date.parse(e.at)}));
+    return [...taskIssues,...due];
+  });
+}
+function superviseCeo(o: OfficeRt) {
+  if(o.def.id!=="hang-fai")return;
+  const now=Date.now(), current=ceoExceptions(o,now), pm=managerOf(o);
+  o.store.setMeta("_office","ceoCheckedAt",now);
+  if(!pm || !current.length || capReached(o))return;
+  const seen=o.store.getMeta<Record<string,string>>("_office","ceoFollowups")??{};
+  const changed=current.filter(k=>seen[k.office+":"+k.id]!==`${k.status}:${k.reason}`);
+  if(!changed.length)return;
+  for(const k of changed)seen[k.office+":"+k.id]=`${k.status}:${k.reason}`;
+  o.store.setMeta("_office","ceoFollowups",seen);
+  pm.addDigest("CEO 追蹤工作："+changed.map(k=>`[${k.officeName}] #${k.id} ${k.title}，負責 ${k.owner}，${k.reason}`).join("；")+
+    "。逐項核對最新成果、負責人、下一步及受阻原因。未驗證不得標完成；先處理現有任務，不自行開新研究或寄信。需要老闆決定時列出具體事項。");
+  // Do not start a model for deterministic reminders.
+}
+setInterval(()=>{for(const o of offices.values())superviseCeo(o);},60000).unref();
 
 // ---- stuck work ----
 // "doing" on the board is only a label. After a restart (shutdown keeps running tasks "doing"), a reset, or a queue that was only
@@ -505,10 +543,28 @@ const app = express();
 initProviders(R, settings.dataDir);
 initIntegrations(settings.dataDir);
 initSkills(settings.dataDir);
-const guard = createGuard({ port: settings.port, host: settings.host, extraHosts: (process.env.PIXEL_OFFICE_ALLOWED_HOSTS ?? "").split(",") });
-app.use(guard.middleware);
-app.use(express.json({ limit: "1mb" }));
+const remoteOffice = !isLoopbackHost(settings.host);
+const ownerAuth = createOwnerAuth(process.env.PIXEL_OFFICE_ACCESS_PASSWORD, remoteOffice);
+const extraHosts = (process.env.PIXEL_OFFICE_ALLOWED_HOSTS ?? "").split(",");
+if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+  // Railway terminates HTTPS at its proxy, forwarding requests with public Host/Origin.
+  extraHosts.push(process.env.RAILWAY_PUBLIC_DOMAIN + ":80");
+}
+const guard = createGuard({ port: settings.port, host: settings.host, extraHosts });
+// Signed owner sessions may operate in an embedded browser that sends
+// Origin: null. Named foreign origins and anonymous mutating requests
+// still go through the strict Host, Origin and Fetch-Site checks.
+app.use((req, res, next) => {
+  if (allowEmbeddedOwnerRequest(req, ownerAuth, guard.hostOk)) return next();
+  guard.middleware(req, res, next);
+});
+app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
+ownerAuth.routes(app);
+app.use(ownerAuth.middleware);
+app.use(express.json({ limit: "6mb" }));
 app.use(express.static(path.join(PKG_ROOT, "web")));
+registerLocalWorkbench(app, { root: path.dirname(configPath(R)), dataDir: settings.dataDir,
+  offices: () => [...offices.values()].map(o => ({id:o.def.id,name:o.def.name,cwd:o.def.cwd,board:o.board})) });
 
 function publicInfo(e: Employee) {
   const { id, name, role, color, look, officeId } = e.cfg;
@@ -525,11 +581,11 @@ function setUnread(e: Employee, n: number) {
 }
 
 const readText = (p?: string) => { try { return p ? fs.readFileSync(p, "utf8") : ""; } catch { return ""; } };
-const MODELS = CLAUDE_MODELS;
+const MODELS: readonly string[] = [];
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 const PERMS = ["default", "acceptEdits", "plan", "dontAsk", "bypassPermissions"] as const;
 const clean = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
-const pickModel = (v: unknown): string | undefined => pick(v, MODELS) ?? (typeof v === "string" && isActiveModel(v) ? v : undefined);
+const pickModel = (v: unknown): string | undefined => (v === undefined || v === "" ? DEFAULT_CODEX_MODEL : typeof v === "string" && isActiveModel(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, list: readonly T[]): T | undefined => (list as readonly string[]).includes(v as string) ? (v as T) : undefined;
 
 const officeInfo = (o: OfficeRt) => ({ id: o.def.id, name: o.def.name, cwd: o.def.cwd, employeesDir: o.def.employeesDir, theme: o.def.theme });
@@ -541,7 +597,7 @@ const clientConfig = () => ({
   locale: locale.code,
   locales: availableLocales(),
   strings: { ui: locale.data.ui, rooms: locale.data.rooms, status: locale.data.status },
-  models: MODELS, extraModels: activeModels().filter((m) => m.provider !== "claude"), efforts: EFFORTS, permissions: PERMS, themes: THEMES,
+  defaultModel: DEFAULT_CODEX_MODEL, codexOnly: true, models: MODELS, extraModels: activeModels().filter((m) => m.provider !== "claude"), efforts: EFFORTS, permissions: PERMS, themes: THEMES,
   project: R.defaultCwd, projectDisplay: displayPath(R.defaultCwd), mode: R.mode, root: R.root, firstRun, memoryFile: settings.memoryFile, multiOffice: settings.multiOffice, defaultOffice: defaultOfficeId(),
   offices: [...offices.values()].map(officeInfo),
 });
@@ -646,11 +702,12 @@ const settingsPayload = async () => ({
 });
 // ---- providers (Settings → Models): which LLM engines are installed and connected, install / sign in / keys from the panel ----
 const isProvider = (v: unknown): v is ProviderId => (PROVIDERS as readonly string[]).includes(String(v));
-const providersPayload = async (fresh = false) => ({ providers: (await providerStatuses(fresh)).map((p) => ({ ...p, canInstall: canInstall(p.id), canLogin: canLogin(p.id) })), extraModels: activeModels().filter((m) => m.provider !== "claude") });
+const providersPayload = async (fresh = false) => ({ providers: (await providerStatuses(fresh)).filter((p) => p.id === "codex").map((p) => ({ ...p, canInstall: canInstall(p.id), canLogin: canLogin(p.id) })), extraModels: activeModels().filter((m) => m.provider !== "claude") });
 app.get("/api/providers", async (req, res) => res.json(await providersPayload(req.query.fresh === "1")));
 app.put("/api/providers/:id", async (req, res) => {
   const id = req.params.id;
   if (!isProvider(id)) return res.status(404).json({ error: "unknown provider" });
+  if (id !== "codex" || req.body?.apiKey !== undefined) return res.status(400).json({ error: "只准使用 Codex ChatGPT 登入；API 金鑰及其他引擎已停用。" });
   const b = (req.body ?? {}) as Record<string, unknown>;
   if (b.enabled !== undefined && typeof b.enabled !== "boolean") return res.status(400).json({ error: t("server.settings.invalid", { key: "enabled" }) });
   if (b.apiKey !== undefined && typeof b.apiKey !== "string") return res.status(400).json({ error: t("server.settings.invalid", { key: "apiKey" }) });
@@ -967,6 +1024,34 @@ r.put("/layout", (req: OReq, res) => {
   broadcast({ type: "layout", office: o.def.id, layout: o.layout.doc });
   res.json({ layout: o.layout.doc });
 });
+// Read-only dashboard: no model calls, derived from persisted events and source metadata.
+r.get("/finance-snapshot", (req: OReq, res) => {
+  const o=officeOf(req); if(!o)return res.status(404).end();
+  if(!["hang-fai","unibright-ops"].includes(o.def.id))return res.status(404).end();
+  const def=settings.offices.find(p=>p.id==="unibright-ops");
+  try { res.json(JSON.parse(fs.readFileSync(path.join(def!.cwd,"finance-snapshot.json"),"utf8"))); }
+  catch { res.status(404).json({error:"未有財務快照"}); }
+});
+r.get("/secretary-mail", (req: OReq, res) => {
+  const o=officeOf(req); if(!o || o.def.id!=="hang-fai")return res.status(404).end();
+  try {res.json(JSON.parse(fs.readFileSync(path.join(path.dirname(configPath(R)),"secretary-mail.json"),"utf8")));}
+  catch {res.status(404).json({error:"未有電郵快照"});}
+});
+r.get("/hq-summary", (req: OReq, res) => {
+  const o = officeOf(req);
+  if (!o) return res.status(404).json({error: t("server.notFound")});
+  const dateKey = (ts: number) => new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Hong_Kong", year:"numeric",month:"2-digit",day:"2-digit"}).format(ts);
+  const yesterday = dateKey(Date.now() - 86400000);
+  const events = o.events.since(0, 1000).filter(e => dateKey(e.ts) === yesterday);
+  const projects = settings.offices.filter(p => p.id !== "hang-fai").map(p => {
+    const sources = characterProjects({id:"manager",officeId:"hang-fai"}, [p], settings.dataDir)[0];
+    return {id:p.id,name:p.name,sources:sources?.sources.map(s => s.name) ?? []};
+  });
+  res.json({ceo:{checkedAt:o.store.getMeta<number>("_office","ceoCheckedAt")??null,exceptions:ceoExceptions(o)}, yesterday:{date:yesterday,events}, projects, costs:costsBrief(o),
+    attention:o.board.tasks.filter(k => k.status === "review" || k.status === "blocked"),
+    sharedNotes:o.board.notes.slice(-12),
+     meetingMode:"coordinated"});
+});
 r.get("/quota", (_req, res) => res.json(getQuota()));
 r.get("/activity", (req: OReq, res) => {
   const o = officeOf(req);
@@ -1095,6 +1180,17 @@ r.get("/employees/:id/history", (req: OReq, res) => {
   const limit = req.query.limit === undefined ? 200 : Number(req.query.limit);
   if (!Number.isFinite(before) || !Number.isInteger(limit) || limit < 1 || limit > 500) return res.status(400).json({ error: t("server.historyQuery") });
   res.json(o.store.readArchive(e.cfg.id, before, limit));
+});
+
+r.get("/employees/:id/knowledge", (req: OReq, res) => {
+  const employee = empOf(req);
+  if (!employee) return res.status(404).json({ error: "Employee not found" });
+  const projects = characterProjects(employee.cfg, settings.offices, settings.dataDir);
+  res.json({ employee: employee.cfg.id, projects: projects.map(p => ({
+    id: p.id, name: p.name, brief: p.brief,
+    sources: p.sources.map(s => ({ name: s.name, excerpt: s.text })),
+    hasRoleMemory: !!p.memory, tasks: p.tasks,
+  })), scope: employee.cfg.officeId === "hang-fai" ? "assigned-projects" : "current-project" });
 });
 
 r.get("/employees/:id/detail", (req: OReq, res) => {
@@ -1263,6 +1359,7 @@ r.post("/employees", (req: OReq, res) => {
   const o = officeOf(req);
   if (!o) return res.status(404).json({ error: t("server.notFound") });
   const b = req.body ?? {};
+  if (!pickModel(b.model)) return res.status(400).json({ error: "只准選擇 Codex 模型。" });
   const name = clean(b.name, 40), role = clean(b.role, 60), prompt = clean(b.prompt, 20000);
   if (!name || !role) return res.status(400).json({ error: t("server.nameRoleRequired") });
   const look = typeof b.look === "object" && b.look ? b.look : undefined;
@@ -1288,6 +1385,7 @@ r.put("/employees/:id", async (req: OReq, res) => {
   const o = officeOf(req), e = empOf(req);
   if (!o || !e) return res.status(404).json({ error: t("server.notFound") });
   const b = req.body ?? {};
+  if (b.model !== undefined && !pickModel(b.model)) return res.status(400).json({ error: "只准選擇 Codex 模型。" });
   const cfg: EmployeeConfig = { ...e.cfg };
   if (b.name !== undefined) cfg.name = clean(b.name, 40) || cfg.name;
   if (b.role !== undefined) cfg.role = clean(b.role, 60) || cfg.role;
@@ -1405,7 +1503,16 @@ app.use((err: unknown, req: Request, res: express.Response, _next: express.NextF
 });
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, verifyClient: (info, cb) => guard.verifyClient(info, cb) });
+const wss = new WebSocketServer({ server, verifyClient: (info, cb) => {
+  if (allowEmbeddedOwnerRequest(info.req, ownerAuth, guard.hostOk) && ownerAuth.verify(info.req)) {
+    return cb(true); // signed session with opaque Origin; never anonymous
+  }
+  guard.verifyClient(info, (ok) => {
+    if (!ok) return cb(false, 403, "Forbidden");
+    if (!ownerAuth.verify(info.req)) return cb(false, 401, "Login required");
+    cb(true);
+  });
+} });
 wss.on("error", (err) => logError("websocket server", err));
 
 // Keeps only well-formed image blocks of a supported type; at most 10 images and ~20 MB of base64 per message.
@@ -1489,7 +1596,7 @@ function startMeeting(o: OfficeRt, topic: string, ids: string[], interruptBusy: 
   if (o.meeting?.active) return;
   const people = ids.map((id) => o.employees.get(id)).filter((e): e is Employee => !!e && !e.inMeeting);
   if (!people.length) return;
-  const m = new Meeting(topic, people, o.store, o.def.cwd);
+  const m = new Meeting(topic, people, o.store, o.def.cwd, false);
   o.meeting = m;
   const office = o.def.id;
   m.on("state", () => { if (o.meeting === m) broadcast({ type: "meeting", office, meeting: m.state() }); });

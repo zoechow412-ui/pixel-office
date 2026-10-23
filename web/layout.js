@@ -6,7 +6,7 @@
 // classic script (window.POLayout), the server loads the very same file to validate what a browser sends (globalThis.POLayout).
 (() => {
   const COLS = 30, ROWS = 17;
-  const MAX_EMP = 12;        // the office seats this many colleagues
+  const MAX_EMP = 16;        // Hang Fai HQ seats all 14 staff, plus 2 future hires
   const MAX_ITEMS = 240, MAX_DESKS = 16;
   const ENTRANCE = { tx: 14, ty: 16 }; // doormat at the bottom edge of the open office; new hires walk in from below
   const key = (x, y) => x + "," + y;
@@ -38,12 +38,13 @@
   // The top wall band (rows 0-1) carries the wall decor. The windows are part of the wall: nothing hangs over them.
   const WINDOW_TILES = new Set([9, 10, 11, 17, 18, 19]);
   // The looks an office can have (the themes). Floor pieces and rugs are drawn in the office's theme unless a piece names a `skin`.
-  const THEMES = ["default", "football", "fashion", "gothic", "music", "travel", "dream"];
+  const THEMES = ["default", "football", "fashion", "gothic", "music", "travel", "dream", "space"];
   // Wall pieces: group -> piece -> [default tiles (one piece per tile), width in tiles, layer]. A piece's type is "<group>_<piece>".
   // Width 0 = ambient decor that spans the wall and takes no tiles (string lights, stained glass ...): each one at most once, drawn under
   // the other pieces ("under", the default) or over them ("over"). The groups are the themes plus "progress": the pieces finished work
   // unlocks. The artwork lives in office.js (WALL_ART).
   const WALL = {
+    space: { cabinets: [[0], 6], poster: [[13], 1], clock: [[15], 1], shelf: [[20], 2], tv: [[24], 4], whiteboard: [[28], 2] },
     default: { cabinets: [[0], 6], poster: [[13], 1], clock: [[15], 1], shelf: [[20], 2], tv: [[24], 4], whiteboard: [[28], 2] },
     football: { banner: [[0], 6], jersey: [[13], 2], clock: [[15], 1], trophies: [[20], 2], scoreboard: [[24], 4], tactics: [[28], 2], pennants: [[0], 0] },
     fashion: { atelier: [[0], 6], moodboard: [[6], 3], poster: [[13], 1], clock: [[15], 1], hats: [[20], 2], mirror: [[24], 4], lights: [[0], 0, "over"] },
@@ -136,15 +137,74 @@
 
   // Desk seat tile columns / rows inside the open office (x 8..21) by head-count
   function deskLayout(n) {
+    // For 13–16 people use four columns with four rows. The original 3×4
+    // layout dropped colleagues 13+ and sometimes blocked the front door.
+    if (n >= 13) return { cols: [10, 13, 16, 19], rows: [3, 7, 11, 14] };
     const cols = n <= 2 ? [14] : n <= 4 ? [11, 17] : [10, 14, 18];
     const rowsNeeded = Math.ceil(n / cols.length);
     const rows = [[8], [5, 11], [4, 9, 14], [3, 7, 11, 15]][Math.min(rowsNeeded, 4) - 1];
     return { cols, rows };
   }
+  // Hang Fai HQ uses four *separate, physically walled rooms*, not colored
+  // columns in the same open office. Real seat assignments are shared by the
+  // canvas, BFS movement logic, server-side layout validator and task runner.
+  const HQ_SEATS = {
+    // North-west wing (former kitchen): 4 executive / sales / media colleagues.
+    manager:[1,3], sales:[4,3], marketing:[1,6], video:[4,6],
+    // Large central studio: four engineering colleagues. Meeting room remains intact.
+    "project-manager":[10,4], architectural:[13,4], plumbing:[16,4], "electrical-fire":[19,4],
+    // South-east wing (former archive): 4 dedicated compliance & finance seats.
+    researcher:[25,11], documentation:[28,11], estimating:[25,14], finance:[28,14],
+    // South-west wing (former lounge): purchasing and IT.
+    procurement:[1,11], developer:[4,11],
+  };
+  const HQ_WINGS = [
+    {key:"kitchen", title:"EXECUTIVE & SALES", count:4, color:"#eec77c"},
+    {key:"office", title:"ENGINEERING STUDIO", count:4, color:"#75b7eb"},
+    {key:"archive", title:"COMPLIANCE & FINANCE", count:4, color:"#c2a6ed"},
+    {key:"lounge", title:"DIGITAL & PROCUREMENT", count:2, color:"#77d8c6"}
+  ];
+  const isHangFaiTeam = (ids) => ids.length >= 13 && ids.includes("manager") &&
+    ids.includes("plumbing") && ids.includes("video");
+  const HQ_FUNCTION_ITEMS = [
+    {id:"zone-print",type:"printer",tx:9,ty:9},
+    {id:"zone-plan",type:"bookshelf",tx:12,ty:9},
+    {id:"zone-stock",type:"cabinets",tx:18,ty:9},
+    {id:"zone-sample",type:"boxes",tx:16,ty:9},
+    {id:"zone-coffee",type:"counter",tx:8,ty:13},
+    {id:"zone-water",type:"cooler",tx:8,ty:15},
+    {id:"zone-files",type:"cabinets",tx:17,ty:13},
+    {id:"zone-film",type:"printer",tx:17,ty:15},
+    {id:"zone-books",type:"bookshelf",tx:20,ty:15},
+    {id:"zone-sofa",type:"sofa",tx:1,ty:14},
+    {id:"zone-table",type:"coffeeTable",tx:1,ty:16}
+  ];
+  function hqItems() {
+    // Free the 3 side rooms for real desks; keep the meeting room and main
+    // studio furnishing. No fake CSS seat positions or obstructed corridors.
+    return defaultItems().filter(it => {
+      const inExec = it.tx <= 6 && it.ty >= 2 && it.ty <= 8;
+      const inDigital = it.tx <= 6 && it.ty >= 10;
+      const inCompliance = it.tx >= 23 && it.ty >= 10;
+      return !(inExec || inDigital || inCompliance);
+    }).concat(HQ_FUNCTION_ITEMS.map(it=>({...it})));
+  }
   function autoDesks(n, ids = []) {
     n = Math.min(n, MAX_EMP);
     if (n < 1) return [];
     const { cols, rows } = deskLayout(n);
+    if (isHangFaiTeam(ids)) {
+      const occupied = new Set();
+      return ids.slice(0,n).map((id,i)=>{
+        let pos=HQ_SEATS[id];
+        if(!pos || occupied.has(pos.join(","))) {
+          pos=rows.flatMap(y=>cols.map(x=>[x,y])).find(p=>!occupied.has(p.join(",")));
+        }
+        if(!pos)throw new Error("No office desk for "+id);
+        occupied.add(pos.join(","));
+        return {id:"desk"+i,type:"desk",tx:pos[0],ty:pos[1],emp:String(id)};
+      });
+    }
     return Array.from({ length: n }, (_, i) => ({ id: "desk" + i, type: "desk", tx: cols[i % cols.length], ty: rows[Math.floor(i / cols.length)], ...(ids[i] != null ? { emp: String(ids[i]) } : {}) }));
   }
 
@@ -412,7 +472,7 @@
   function scene(doc, ids, theme, progress = 0) {
     ids = ids.slice(0, MAX_EMP);
     let items, missing = [], added = false;
-    if (!doc) items = defaultItems().concat(autoDesks(ids.length, ids));
+    if (!doc) items = (isHangFaiTeam(ids) ? hqItems() : defaultItems()).concat(autoDesks(ids.length, ids));
     else { const r = ensureDesks(doc.items, ids); items = r.items; missing = r.missing; added = r.changed; }
     items = withDecor(items, doc, theme, progress);
     const { map, missing: unseated } = assignDesks(items, ids);
@@ -472,7 +532,7 @@
   };
 
   globalThis.POLayout = {
-    COLS, ROWS, MAX_EMP, MAX_ITEMS, MAX_DESKS, ENTRANCE, ROOMS, DOORS, DOOR_GROUPS, FIXED_SPOTS, WALLS, TYPES, TYPE_ORDER, DEFAULT_DIR,
+    COLS, ROWS, MAX_EMP, MAX_ITEMS, MAX_DESKS, ENTRANCE, ROOMS, DOORS, DOOR_GROUPS, HQ_WINGS, HQ_FUNCTION_ITEMS, isHangFaiTeam, FIXED_SPOTS, WALLS, TYPES, TYPE_ORDER, DEFAULT_DIR,
     THEMES, WALL, RUG, PROGRESS_ORDER, WINDOW_TILES, isWall, wallOrder, wallOf, defaultWall, defaultRug, progressWall, withDecor,
     key, defaultItems, deskLayout, autoDesks, build, check, sanitize, toDoc, clone, assignDesks, ensureDesks, findPlace, nextId, scene,
     canDelete, rotate, repair, nearestFree, tilesOf, floorTiles, isFloor: (x, y) => floor.has(key(x, y)),

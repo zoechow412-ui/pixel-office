@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import {Meeting} from '../dist/server/meeting.js';
+import {initRuntime} from '../dist/server/runtime.js';
+initRuntime({}, {t:(key)=>key});
+let calls=0;
+const people=Array.from({length:14},(_,i)=>{const e=new EventEmitter();e.cfg={id:i===0?'manager':'staff'+i,name:'Person'+i,role:'Role'+i};e.status='idle';e.note=()=>{};e.poke=()=>{};e.meetingOver=()=>{};e.sendMeeting=async prompt=>{calls++;assert.match(prompt,/唯一主持/);return '各部門觀點及結論';};return e;});
+const saved=[];const m=new Meeting('test',people,{saveMeeting:(id,data)=>saved.push(data)},'.',true);
+await m.start(false);assert.equal(m.state().participants.filter(p=>p.joined).length,14);
+m.say('討論進度');await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);
+await m.end({summary:true,memory:false});assert.equal(calls,1);assert.equal(m.state().mode,'coordinated');assert.equal(m.state().summary,'各部門觀點及結論');
+console.log('14 participants use one presenter turn; closing reuses summary without a second provider call; transcript persisted.');
+process.exit(0);

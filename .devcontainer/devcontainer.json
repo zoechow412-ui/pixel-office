@@ -1,0 +1,24 @@
+{
+  "name": "恒輝 AI 總部 · 私人預覽",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [
+    4747
+  ],
+  "portsAttributes": {
+    "4747": {
+      "label": "恒輝 AI 總部 — 立即觀看辦公室",
+      "onAutoForward": "openBrowser",
+      "visibility": "private",
+      "protocol": "http"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start-office.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}

@@ -116,6 +116,12 @@ body.offline .offline-banner { display: block; }
 .label small { display: block; font-family: "IBM Plex Mono", monospace; font-size: 9px; color: #d9d3c5; opacity: .85; }
 .label.selected { color: var(--accent); }
 .labels.compact .label small { display: none; }
+.hq-zone-link { position:absolute;pointer-events:auto;border:1px solid #7c9caf;background:#152d42e8;color:#f6dfb2;border-radius:5px;padding:3px 6px;font:600 10px Arial,sans-serif;cursor:pointer;white-space:nowrap; }
+.hq-zone-link:hover,.hq-zone-link:focus-visible { background:#31556b;outline:2px solid #eed09a; }
+.hq-function-areas { padding:14px;border:1px solid #39586e;border-radius:14px;background:#11283d;margin:12px 0; }
+.hq-function-areas h3 { margin:0 0 10px;font-size:16px; }
+.hq-function-areas nav { display:flex;flex-wrap:wrap;gap:8px; }
+.hq-function-areas button { background:#203d55;color:#f4e1b6;border:1px solid #56798e;border-radius:8px;padding:8px 12px;cursor:pointer;font:inherit; }
 .room-label { position: absolute; transform: translate(-50%, 0); font-family: "Silkscreen", monospace; font-size: 9px; letter-spacing: 2px; color: rgba(40, 30, 20, .45); white-space: nowrap; }
 .labels.compact .room-label { display: none; }
 .labels.dark .room-label { color: rgba(255, 240, 220, .45); }

@@ -4764,7 +4764,8 @@
       "gothic": "Gothic manor",
       "music": "Music studio",
       "travel": "Travel agency",
-      "dream": "Dream studio"
+      "dream": "Dream studio",
+      "space": "Pixel Space HQ"
     },
     "closedBanner": "Office closed — start it again with <code>pixel-office</code>",
     "settings": {

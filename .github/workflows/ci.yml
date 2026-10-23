@@ -19,6 +19,16 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+      - name: Validate Hang Fai HQ private preview and agent setup
+        run: node scripts/test-hang-fai-hq.mjs
+      - name: Validate Agency Agents engineering roster
+        run: node scripts/test-hang-fai-roster.mjs
+      - name: Verify larger departmental floor and seating
+        run: node scripts/test-hang-fai-layout.mjs
+      - name: Verify separate business project offices
+        run: node scripts/test-hang-fai-projects.mjs
+      - name: Verify owner login and WebSocket authentication
+        run: node scripts/test-hang-fai-auth.mjs
       - name: Locale files are valid JSON with the same keys
         run: node scripts/check-locales.mjs
       - name: Server starts, serves the UI and shuts down

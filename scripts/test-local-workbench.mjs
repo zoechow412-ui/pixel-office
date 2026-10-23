@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import express from 'express';
+import {PDFDocument} from 'pdf-lib';
+import {unzipSync} from 'fflate';
+import {calculateQuote,backupFiles,verifyBackup,registerLocalWorkbench} from '../dist/server/local-workbench.js';
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'office-local-'));
+const project=path.join(root,'projects','test');fs.mkdirSync(path.join(project,'sources'),{recursive:true});
+fs.writeFileSync(path.join(project,'sources','reference.md'),'原稿 UNIBRIGHT test-source-759 不可更改水路');
+fs.writeFileSync(path.join(root,'secret.json'),'DO-NOT-BACK-UP');
+fs.mkdirSync(path.join(root,'employees'),{recursive:true});fs.writeFileSync(path.join(root,'employees','agent.md'),'model: gpt-6.1-sol');fs.writeFileSync(path.join(root,'employees','secrets.json'),'PRIVATE');
+const q=calculateQuote({items:[{description:'測試',qty:'3',rate:'0.10'},{qty:'1.005',rate:'10'}],discount:'0.15',paid:'1'});
+assert.throws(()=>calculateQuote({items:[{qty:"1"}]}),/單價必填/);
+assert.equal(q.total,10.20);assert.equal(q.due,9.20);assert.throws(()=>calculateQuote({items:[{qty:'1',rate:'2'}],paid:'3'}));
+const bundle=backupFiles([{label:'employees',dir:path.join(root,'employees')}]);assert.equal(verifyBackup(bundle.archive),1);assert(!Object.keys(unzipSync(bundle.archive)).some(n=>n.includes('secrets')));
+const app=express();app.use(express.json({limit:'6mb'}));registerLocalWorkbench(app,{root,dataDir:path.join(root,'data'),offices:()=>[{id:'test',name:'Test',cwd:project,board:{notes:[],tasks:[{id:1,title:'受阻工作',owner:'finance',status:'blocked',updated:Date.now()}]}},{id:'other',name:'Other',cwd:path.join(root,'other'),board:{notes:[],tasks:[]}}]});
+const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const base='http://127.0.0.1:'+server.address().port+'/api/offices/';
+const call=async(route,body,method='POST',office='test')=>{const r=await fetch(base+office+'/local/'+route,body===undefined?{}:{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const json=await r.json();return {status:r.status,json};};
+try{
+  let r=await call('search?q=UNIBRIGHT');assert.equal(r.json.results.length,1);assert.match(r.json.results[0].source,/reference/);
+  assert.equal((await call('search?q=UNIBRIGHT',undefined,'GET','other')).json.results.length,0);
+  assert.equal((await call('documents',{name:'../bad',text:'x'})).status,400);
+  assert.equal((await call('documents',{name:'會議原稿.txt',text:'來源測試 signature-931'})).status,200);
+  assert.equal((await call('search?q=signature-931')).json.results.length,1);
+  const event=await call('calendar',{title:'視察',at:'2026-10-22T10:00:00+08:00',owner:'Ethan'});assert.equal(event.status,200);
+  assert.equal((await call('calendar')).json.events.length,1);assert.equal((await call('reminders')).json.items.length,2);
+  assert.equal((await call('calendar/'+event.json.id,{done:true},'PUT')).json.done,true);assert.equal((await call('reminders')).json.items.length,1);
+  const draft=await call('mail/drafts',{to:'example@example.com',subject:'只作草稿測試',text:'不會寄出'});assert.equal(draft.status,200);
+  assert.equal((await call('mail/drafts/'+draft.json.id+'/review',{confirm:true})).status,200);
+  const eml=await fetch(base+'test/local/mail/drafts/'+draft.json.id+'/eml');assert.equal(eml.status,200);assert.match(await eml.text(),/X-Unsent: 1/);
+  const imported=await call('mail/import',{eml:Buffer.from('From: Sender <sender@example.com>\r\nSubject: Raw Mail\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="a"\r\n\r\n--a\r\nContent-Type: text/plain\r\n\r\nOriginal message\r\n--a\r\nContent-Type: text/plain\r\nContent-Disposition: attachment; filename="note.txt"\r\n\r\nAttachment content\r\n--a--\r\n').toString('base64')});assert.equal(imported.status,200);assert.match(imported.json.text,/Original message/);assert.equal(Buffer.from(imported.json.attachments[0].base64,'base64').toString(),'Attachment content');
+  assert.equal((await call('mail/drafts/'+draft.json.id+'/send',{confirm:true})).status,400); // no mailbox configured; never send test mail
+  const pdf=await fetch(base+'test/local/quote.pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reference:'TEST',items:[{description:'材料',qty:'2',rate:'120.50'}]})});
+  if(pdf.status!==200)throw new Error(await pdf.text());const bytes=new Uint8Array(await pdf.arrayBuffer());assert((await PDFDocument.load(bytes)).getPageCount()===1);fs.writeFileSync('../../outputs/quote-calculation-verification.pdf',bytes);
+  const pdfImport=await call('documents/pdf',{name:'核算原稿.pdf',pdf:Buffer.from(bytes).toString('base64')});assert.equal(pdfImport.status,200,JSON.stringify(pdfImport.json));assert.equal(pdfImport.json.originalPreserved,true);
+  const pdfSearch=await call('search?q='+encodeURIComponent('材料'));assert(pdfSearch.json.results.some(x=>x.source.includes('核算原稿.pdf')));
+  const original=await fetch(base+'test/local/documents/file?name='+encodeURIComponent('核算原稿.pdf'));assert(Buffer.from(await original.arrayBuffer()).equals(Buffer.from(bytes)));
+  const importedAgain=await call('mail/imports/'+imported.json.importId);assert.equal(importedAgain.json.attachments.length,1,'Stored original email restores attachments on a later request');
+  r=await call('backups',{});assert.equal(r.json.verified,true);const archive=await fetch(base+'test/local/backups/'+r.json.name);assert(verifyBackup(new Uint8Array(await archive.arrayBuffer()))>0);
+  const raw=JSON.parse(fs.readFileSync(path.join(root,'data','test','local-workbench.json'),'utf8'));assert.equal(raw.events.length,1);assert.equal(raw.drafts.length,1);
+  console.log('PASS: cents rounding, project isolation, source search, safe import, persisted calendar/reminders, email MIME+attachment, reviewed unsent draft, Chinese PDF, backup restore checksums. No model calls or outgoing email.');
+}finally{server.close();fs.rmSync(root,{recursive:true,force:true});}

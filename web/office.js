@@ -70,6 +70,7 @@ class Office {
     this.selected = null;
     this.hovered = null;
     this.scale = 1;
+    this.zoomFactor = 1.14; // user-adjustable HQ zoom; scrolling preserves readable pixel art
     this.offline = false;
     this.clickHandler = null;
     this.blocked = new Set();
@@ -85,6 +86,9 @@ class Office {
     this.theme = "default";
     this.particles = [];
     this.last = performance.now();
+    this.lively = localStorage.getItem("po.lively") !== "0";
+    this.motionConsent = localStorage.getItem("po.motionConsent") === "1";
+    window.addEventListener("hq-motion", (ev) => { this.lively = ev.detail !== false; this.motionConsent = this.lively; });
     this.labelEls = new Map();
     this.roomEls = [];
     canvas.addEventListener("mousemove", (e) => { if (!this.editing) this.onMove(e); });
@@ -107,8 +111,16 @@ class Office {
     if (next === this.theme) return;
     this.theme = next;
     this.buildStatic();
-    for (const { r, el } of this.roomEls) el.textContent = roomName(this.theme, r.key);
+    for (const { r, el } of this.roomEls) el.textContent = this.divisionName(r.key);
     this.labelsEl.classList.toggle("dark", !!(THEMES[this.theme] || {}).dark);
+  }
+
+  divisionName(roomKey) {
+    if (POLayout.isHangFaiTeam(this.rosterIds)) {
+      const zone=POLayout.HQ_WINGS.find(w=>w.key===roomKey);
+      if(zone)return zone.title;
+    }
+    return roomName(this.theme,roomKey);
   }
 
   // ---------- layout ----------
@@ -176,7 +188,8 @@ class Office {
         tx: enters ? ENTRANCE.tx : seat.tx, ty: enters ? ROWS : seat.ty,
         x: (enters ? ENTRANCE.tx : seat.tx) * TILE, y: (enters ? ROWS : seat.ty) * TILE,
         dir: enters ? "up" : "down", anim: enters ? "walk" : "sit", path: [], walkDist: 0, spot: null,
-        restUntil: performance.now() + rand(5000, 16000),
+        restUntil: performance.now() + 1800 + i * 650,
+        ambientAt: performance.now() + 2200 + i * 950,
         bubble: null, unread: 0, seed: i * 977 + 13, sipAt: performance.now() + rand(6000, 20000),
       };
       if (enters) { ne.entering = true; ne.restUntil = 0; }
@@ -190,13 +203,14 @@ class Office {
     this.roomEls = ROOMS.map((r) => {
       const el = document.createElement("div");
       el.className = "room-label";
-      el.textContent = roomName(this.theme, r.key);
+      el.textContent = this.divisionName(r.key);
       this.labelsEl.appendChild(el);
       return { r, el };
     });
     for (const e of this.emps) {
       const el = document.createElement("div");
       el.className = "label";
+      el.title = e.name + " · " + e.role;
       el.textContent = e.name; // names and roles are the boss's free text: never markup
       const small = document.createElement("small");
       small.textContent = e.role;
@@ -380,6 +394,9 @@ class Office {
         e.spot = null;
       } else if (e.meet) {
         e.meet = false;
+        e.meetingActivity = null;
+        e.sipping = 0;
+        e.micro = null;
         e.spot = null;
         this.goTo(e, e.seat.tx, e.seat.ty);
         e.restUntil = now + rand(9000, 22000);
@@ -398,8 +415,18 @@ class Office {
     for (const e of this.emps) {
       if (!e.meet || e.spot) continue;
       const taken = new Set(this.emps.filter((o) => o !== e && o.spot).map((o) => o.spot.key));
-      const s = this.meetingSpots.find((x) => !taken.has(x.key));
-      if (s && this.goToSpot(e, s)) e.spot = s;
+      const reserved = new Set(this.emps.filter(o=>o!==e&&o.spot).map(o=>key(o.spot.tx,o.spot.ty)));
+      const candidates = this.meetingSpots.filter(x => !taken.has(x.key)&&!reserved.has(key(x.tx,x.ty)));
+      let placed = false;
+      for(const s of candidates)if(this.goToSpot(e,s)){e.spot=s;placed=true;break;}
+      // The classic room has 12 named places. Extra participants need real floor
+      // positions too, rather than remaining at their desks with a joined badge.
+      const room=ROOMS.find(r=>r.key==="meeting");
+      if(!placed&&room&&this.meetingSpots.length)for(let y=room.y0;y<=room.y1&&!placed;y++)for(let x=room.x0;x<=room.x1;x++){
+        if(reserved.has(key(x,y))||this.isBlocked(x,y,e)||[...this.doors].some(k=>{const [dx,dy]=k.split(",").map(Number);return Math.abs(dx-x)+Math.abs(dy-y)<=1;}))continue;
+        const s={key:"meeting-floor-"+x+"-"+y,tx:x,ty:y,dir:y<(room.y0+room.y1)/2?"down":"up",anim:"stand",meet:true};
+        if(this.goToSpot(e,s)){this.meetingSpots.push(s);e.spot=s;placed=true;break;}
+      }
     }
   }
 
@@ -421,7 +448,8 @@ class Office {
     const bar = stage.querySelector(".layout-bar"); // the layout editor's palette under the office
     const barH = bar && !bar.hidden ? bar.offsetHeight + 12 : 0;
     const ch = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - rosterH - barH;
-    const raw = Math.min(cw / LW, ch / LH);
+    const sideOpen = document.body?.classList?.contains("chat-open") || document.body?.classList?.contains("meeting-open");
+    const raw = Math.min(Math.min(cw / LW, ch / LH) * (this.zoomFactor || 1), sideOpen ? cw / LW : Infinity);
     // 1/16 steps keep pixels crisp; cap at 2.5× for 4K screens, floor at 0.3× for phones
     this.scale = Math.max(0.3, Math.min(2.5, Math.floor(raw * 16) / 16));
     const dpr = window.devicePixelRatio || 1;
@@ -443,6 +471,9 @@ class Office {
     if (this.freeSeats.has(key(x, y))) return true; // the chair of an empty desk
     for (const o of this.emps) {
       if (o === self) continue;
+      // Gathering participants may pass one another; assigned destinations are
+      // separately reserved, so a standing colleague cannot seal the room entrance.
+      if (self?.meet && o.meet) continue;
       if (o.seat.tx === x && o.seat.ty === y) return true;
       if (o.spot && o.spot.tx === x && o.spot.ty === y) return true;
       if (!o.path.length && o.tx === x && o.ty === y) return true;
@@ -492,6 +523,8 @@ class Office {
 
   update(dt, now) {
     this.tickEvents(now);
+    if(now-(this.motionReportAt||0)>1000){this.motionReportAt=now;window.dispatchEvent?.(new CustomEvent("hq-motion-frame",{detail:{walking:this.emps.filter(e=>e.anim==="walk").length,reduced:REDUCED_MOTION.matches,consent:this.motionConsent}}));}
+    this.ambientLife(now);
     if (this.particles.length) {
       for (const p of this.particles) { p.vy += 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.98; p.life -= dt; p.rot += p.vr * dt; }
       this.particles = this.particles.filter((p) => p.life > 0 && p.y < LH + 8);
@@ -505,7 +538,7 @@ class Office {
         const gx = next.tx * TILE, gy = next.ty * TILE;
         const dx = gx - e.x, dy = gy - e.y;
         const dist = Math.hypot(dx, dy);
-        const step = WALK_SPEED * dt;
+        const step = WALK_SPEED * dt * (this.lively ? 1.12 : 1);
         e.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
         if (dist <= step) {
           e.x = gx; e.y = gy; e.tx = next.tx; e.ty = next.ty;
@@ -537,10 +570,35 @@ class Office {
       }
       this.lifeApply(e, now);
       this.lifeTalk(e, now);
-      if (e.meet) continue;
+      if (e.meet) { if(!e.spot&&!e.path.length)this.assignMeetingSpots(); this.meetingLife(e, now); continue; }
       if (e.status === "idle" && now > e.restUntil) this.decideIdle(e, now);
       if (e.status !== "idle" && e.status !== "sick" && !this.atSeat(e)) this.goTo(e, e.seat.tx, e.seat.ty);
     }
+  }
+
+  // Local body language, never a model turn or a fabricated contribution.
+  meetingLife(e, now) {
+    if (e.path.length || !e.spot) return;
+    e.meetingActivity = "聆聽";
+    if (!this.lively || (REDUCED_MOTION.matches && !this.motionConsent)) return;
+    const speaker = this.emps.find(o => o.meet && o.status === "working" && !o.path.length);
+    if (speaker && speaker !== e) {
+      const dx = speaker.x - e.x, dy = speaker.y - e.y;
+      e.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
+    }
+    if (e.status === "working" || e.hand) {
+      e.anim = e.spot.anim === "sit" || e.spot.anim === "sitfree" ? "wave" : "chat";
+      e.meetingActivity = e.hand ? "舉手" : "處理會議內容";
+      return;
+    }
+    const phase = Math.floor((now + e.seed * 17) / 2200) % 8;
+    // Seated gestures stay seated; standing colleagues keep their own floor tile.
+    const seated = e.spot.anim === "sit" || e.spot.anim === "sitfree";
+    if (phase === 0 && seated) { e.anim = "sip"; e.sipping = now - ((now + e.seed * 17) % 2200); e.meetingActivity = "飲水"; }
+    else if (phase === 2 && seated) { e.anim = "paper"; e.meetingActivity = "翻筆記"; }
+    else if (phase === 4) { e.anim = seated ? "stretch" : "chat"; e.meetingActivity = seated ? "伸展" : "轉身活動"; }
+    else if (phase === 6) { e.dir = ["left", "down", "right", "up"][Math.floor(now / 550) % 4]; e.meetingActivity = "望向同事"; }
+    else { e.sipping = 0; e.micro = null; }
   }
 
   arrived(e, now) {
@@ -561,6 +619,7 @@ class Office {
   celebrate(id) { const e = this.emps.find((x) => x.id === id); if (e) this.burst(e.x + 16, e.y + 8, 60); }
 
   decideIdle(e, now) {
+    if (REDUCED_MOTION.matches && !this.motionConsent) { e.restUntil = now + 20000; return; }
     if (this.tryNap(e, now)) return;
     const goSpot = this.atSeat(e) ? Math.random() < 0.6 : Math.random() < 0.45;
     if (goSpot) {
@@ -570,6 +629,41 @@ class Office {
     e.spot = null;
     this.goTo(e, e.seat.tx, e.seat.ty);
     e.restUntil = now + rand(8000, 20000);
+  }
+
+  // Local idle activity only. These poses never change model or task status.
+  ambientLife(now) {
+    if (!this.lively || (REDUCED_MOTION.matches && !this.motionConsent) || this.editing || now - (this.ambientCheck || 0) < 600) return;
+    this.ambientCheck = now;
+    const max = Math.max(1, Math.ceil(this.emps.length / 5));
+    let moving = this.emps.filter(e => e.path.length && !e.meet).length;
+    for (const e of this.emps) {
+      if (e.status !== "idle" || e.meet || e.entering || e.act || e.errand || e.path.length || e.sipping) continue;
+      if (!e.ambientAt) e.ambientAt = now + 3000 + e.seed % 7000;
+      if (now < e.ambientAt) continue;
+      e.ambientAt = now + rand(16000, 29000);
+      if (!this.atSeat(e)) { this.goTo(e, e.seat.tx, e.seat.ty); e.spot = null; continue; }
+      // Try every available facility; a single unreachable spot must not freeze the whole room.
+      if (moving < max) {
+        const taken = new Set(this.emps.filter(o => o !== e && o.spot).map(o => o.spot.key));
+        const spots = this.spots.filter(s => !taken.has(s.key) && !(this.meetingOn && s.meet)).sort(() => Math.random() - .5);
+        let started = false;
+        for (const s of spots) if (!this.isBlocked(s.tx,s.ty,e) && this.goToSpot(e,s) && e.path.length) { e.spot=s; started=true; break; }
+        // Saved department layouts can have no break furniture. Take a short reachable aisle walk.
+        if (!started) {
+          const candidates=[];
+          for (let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++) {
+            if(Math.abs(dx)+Math.abs(dy)<2 || this.isBlocked(e.seat.tx+dx,e.seat.ty+dy,e))continue;
+            candidates.push([e.seat.tx+dx,e.seat.ty+dy]);
+          }
+          candidates.sort(()=>Math.random()-.5);
+          for(const [tx,ty] of candidates) if(this.goTo(e,tx,ty)&&e.path.length){e.spot=null;started=true;break;}
+        }
+        if(started){moving++;e.restUntil=now+rand(5500,9000);this.say(e,"活動一下",1700);continue;}
+      }
+      e.micro={kind:"stretch",t0:now};
+      this.say(e,"待命中",1500);
+    }
   }
 
   // ---------- input ----------
@@ -602,7 +696,7 @@ class Office {
       const dt = Math.min(0.05, (now - this.last) / 1000);
       requestAnimationFrame(loop);
       if (document.hidden) { this.last = now; return; }
-      if (REDUCED_MOTION.matches && now - this.last < 200) return;
+      if (REDUCED_MOTION.matches && !this.motionConsent && now - this.last < 200) return;
       this.last = now;
       this.update(dt, now);
       this.draw(now);
@@ -614,7 +708,38 @@ class Office {
     const b = this.b;
     const dim = this.editing ? this.editorDim : null; // the piece being dragged stays faded where it was
     drawFloors(b, this.theme, this.rugItems, dim);
+    // Unlike the old four vertical stripes, these are four *existing walled
+    // rooms* with distinct real desks, travel routes and room name plates.
+    const isHq = POLayout.isHangFaiTeam(this.rosterIds);
+    if (isHq) {
+      b.save();
+      if(this.theme !== "space") drawHqCharm(b, t);
+      for (const wing of POLayout.HQ_WINGS) {
+        const r=ROOMS.find(x=>x.key===wing.key);
+        if(!r)continue;
+        const x=r.x0*TILE,y=r.y0*TILE,w=(r.x1-r.x0+1)*TILE,h=(r.y1-r.y0+1)*TILE;
+        b.fillStyle=wing.color; b.globalAlpha=.23;
+        b.fillRect(x+2,y+2,w-4,h-4);
+        b.globalAlpha=.72;
+        b.fillRect(x+3,y+3,w-6,5);
+        b.globalAlpha=.36;
+        b.fillRect(x+3,y+h-8,w-6,4);
+        b.globalAlpha=1;
+        // Raised enamel division signage, placed near each room's ceiling.
+        const title=wing.title+"  ·  "+wing.count;
+        b.font='bold 10px Arial,sans-serif';
+        b.textAlign='center'; b.textBaseline='middle';
+        const plaqueW=Math.min(w-10,Math.ceil(b.measureText(title).width+18));
+        const plaqueX=x+(w-plaqueW)/2;
+        b.fillStyle="#182b43";b.fillRect(plaqueX,y+11,plaqueW,22);
+        b.fillStyle=wing.color;b.fillRect(plaqueX,y+11,plaqueW,3);
+        b.fillStyle="#f9fbff";b.fillText(title,x+w/2,y+25,plaqueW-7);
+      }
+      b.restore();
+    }
+    if(isHq && window.HQZones) window.HQZones.drawFloor(b);
     drawWalls(b, this.blocked, this.doors, t, this.theme, this.wallItems, dim);
+    if(this.theme === "space") drawSpaceWindows(b, t);
     const items = [];
     const faded = (id, fn) => (dim && id === dim ? () => { b.save(); b.globalAlpha = 0.3; fn(); b.restore(); } : fn);
     for (const d of this.decor) items.push({ y: d.y, draw: faded(d.id, () => d.draw(b, t)) });
@@ -664,8 +789,11 @@ class Office {
       if (!el) continue;
       el.style.left = (e.x + 16) * this.scale + "px";
       el.style.top = (e.y + TILE + (this.atSeat(e) ? 30 : 2)) * this.scale + "px";
+      if(el.dataset){el.dataset.person = e.id; el.dataset.pose = e.anim; el.dataset.status = e.status; el.dataset.meetingActivity = e.meet ? e.meetingActivity || "前往會議室" : "";}
+      el.setAttribute?.("aria-label", e.name + " · " + e.status + " · " + e.anim + (e.meet ? " · " + (e.meetingActivity || "前往會議室") : ""));
       el.classList.toggle("selected", e.id === this.selected);
     }
+    if(window.HQZones) window.HQZones.sync(this);
   }
 }
 
@@ -696,6 +824,57 @@ function traitOf(e) {
   return e.trait;
 }
 const lifeStrings = () => (window.PO && window.PO.strings && window.PO.strings.ui && window.PO.strings.ui.life) || {};
+// Pixel artwork stays in the wall band; no collision, seat or character changes.
+function drawSpaceWindows(b, t) {
+  b.save();
+  b.fillStyle='#75e0de';
+  for(let x=16;x<950;x+=70)b.fillRect(x,53,34,3);
+  for(const x of [284,540]) {
+    b.fillStyle='#081e37';b.fillRect(x,4,104,44);
+    b.fillStyle='#d5eeff';
+    for(let i=0;i<12;i++){b.globalAlpha=.6+.4*Math.sin(t/1800+i)**2;b.fillRect(x+5+(i*31)%94,7+(i*13)%35,1,1);}
+    b.globalAlpha=1;b.fillStyle='#438fc5';b.beginPath();b.arc(x+65,27,19,0,Math.PI*2);b.fill();
+    b.fillStyle='#8ac5b9';b.fillRect(x+53,18,15,5);b.fillRect(x+63,24,12,7);
+    b.strokeStyle='#64d9ec';b.lineWidth=2;b.strokeRect(x,4,104,44);
+    b.beginPath();b.moveTo(x+52,4);b.lineTo(x+52,48);b.stroke();
+  }
+  b.restore();
+}
+function drawHqCharm(b, t) {
+  // A flat woven rug and wall fairy lights: purely decorative, no furniture,
+  // seats, walkable cells or click coordinates are changed.
+  const x = 10 * TILE, y = 10 * TILE, w = 10 * TILE, h = 5 * TILE;
+  b.fillStyle = "#b79283"; b.fillRect(x + 6, y + 8, w - 12, h - 12);
+  b.fillStyle = "#ecd4bd"; b.fillRect(x, y, w, h - 8);
+  b.fillStyle = "#d6ac9d"; b.fillRect(x + 5, y + 5, w - 10, h - 18);
+  b.fillStyle = "#e7c8b2"; b.fillRect(x + 10, y + 10, w - 20, h - 28);
+  for (let px = x + 8; px < x + w; px += 12) {
+    b.fillStyle = "#f4e5d1"; b.fillRect(px, y - 4, 4, 5); b.fillRect(px, y + h - 9, 4, 5);
+  }
+  // Little cloud stitched into the rug, with blush and sleepy eyes.
+  const cx = x + w / 2, cy = y + 54;
+  b.fillStyle = "#fff1d9";
+  b.fillRect(cx - 48, cy - 10, 96, 32); b.fillRect(cx - 36, cy - 23, 72, 15);
+  b.fillRect(cx - 20, cy - 31, 40, 12);
+  b.fillStyle = "#735d60"; b.fillRect(cx - 23, cy + 1, 8, 3); b.fillRect(cx + 15, cy + 1, 8, 3);
+  b.fillRect(cx - 3, cy + 9, 6, 3);
+  b.fillStyle = "#e5aa9e"; b.fillRect(cx - 32, cy + 8, 12, 5); b.fillRect(cx + 20, cy + 8, 12, 5);
+  b.textAlign = "center"; b.font = "bold 13px Arial,sans-serif";
+  b.fillStyle = "#866b67"; b.fillText("A LITTLE OFFICE, BIG IDEAS", cx, y + 110);
+  const stars = [[x+30,y+31],[x+w-33,y+38],[x+56,y+110],[x+w-50,y+106]];
+  for (const [sx,sy] of stars) {
+    b.fillStyle = "#fff0ca";
+    b.fillRect(sx-5,sy-1,11,3); b.fillRect(sx-1,sy-5,3,11);
+  }
+  b.strokeStyle = "#8a9aa8"; b.lineWidth = 1;
+  b.beginPath(); b.moveTo(8*TILE, 2*TILE+2); b.quadraticCurveTo(15*TILE,3*TILE,22*TILE,2*TILE+2); b.stroke();
+  for (let i=0; i<12; i++) {
+    const u=i/11, lx=(8+14*u)*TILE, ly=2*TILE+2+Math.sin(Math.PI*u)*16;
+    const glow = REDUCED_MOTION.matches ? 0.75 : 0.65 + Math.sin(t/1800+i)*0.2;
+    b.globalAlpha=glow; b.fillStyle=i%3===0?"#e8b7ac":i%3===1?"#f5dfa7":"#bcd9c2";
+    b.fillRect(lx-2,ly,5,7); b.globalAlpha=1;
+  }
+}
 function lifePick(arr, fallback = "") { return Array.isArray(arr) && arr.length ? arr[Math.floor(Math.random() * arr.length)] : fallback; }
 // how long a balloon stays up: longer sentences need longer to read
 const lifeMs = (text) => Math.min(5200, 1600 + String(text || "").length * 55);
@@ -911,10 +1090,10 @@ Object.assign(Office.prototype, {
     e.lifeAt = now + rand(9000, 24000);
     let kind = null;
     if (e.anim === "sit") {
-      const opts = [["stretch", 3], ["yawn", 3], ["doze", 2 * dozeChance(e)]];
+      const opts = [["stretch", 3], ["yawn", 3], ["doze", this.lively ? 0 : 2 * dozeChance(e)]];
       let r = Math.random() * opts.reduce((s, o) => s + o[1], 0);
       for (const [k, w] of opts) { r -= w; if (r <= 0) { kind = k; break; } }
-    } else if (e.anim === "sitfree" && Math.random() < 0.6 * dozeChance(e)) kind = "doze";
+    } else if (!this.lively && e.anim === "sitfree" && Math.random() < 0.6 * dozeChance(e)) kind = "doze";
     if (!kind) return;
     const dur = kind === "doze" ? rand(7000, 12000) : kind === "yawn" ? 1900 : 2300;
     e.act = { kind, anim: kind === "doze" && e.anim === "sitfree" ? "dozefree" : kind, t0: now, until: now + dur, spot: e.spot || null };
@@ -986,7 +1165,12 @@ Object.assign(Office.prototype, {
     if (!e) return;
     const now = performance.now();
     const S = lifeStrings();
-    this.say(e, lifePick((S.lines || {})[traitOf(e)], lifePick(S.click)));
+    const greetings = {
+      manager: "Zoe，我喺度。有咩要我跟進？", finance: "Zoe，要一齊睇邊份數？",
+      marketing: "Zoe，今日想試咩新諗法？", architectural: "Zoe，想一齊睇圖嗎？",
+      video: "Zoe，想傾片嘅故事定分鏡？", documentation: "Zoe，要搵邊份文件？"
+    };
+    this.say(e, greetings[e.id] || "Zoe，我喺度。你想傾咩？");
     if (e.status !== "idle" || e.meet || e.path.length || e.act || e.errand) return;
     const seat = this.atSeat(e);
     if (seat) { e.sipping = 0; e.act = { kind: "hop", anim: "wave", hold: true, t0: now, until: now + 1500, dir: "down" }; }
@@ -1881,6 +2065,7 @@ function drawOverhead(b, e, t, occupied) {
 // ---------- themes ----------
 // Same room layout and walkable tiles for every theme; only palette, floors, wall decor and props change.
 const THEMES = {
+  space: { wall: {face:'#25415b',top:'#62cce1',base:'#192c42',base2:'#0e2035',edge:'#071525',inner:'#365976',innerLight:'#75cce4',innerDark:'#142f48'}, floors:{kitchen:'nightTiles',office:'nightTiles',meeting:'studioCarpet',lounge:'darkTiles',archive:'nightTiles'}, rug:'round', dark:true },
   default: { wall: { face: "#6f8896", top: "#7f98a6", base: "#5c7280", base2: "#43545f", edge: "#39474f", inner: "#8ea3b0", innerLight: "#a9bcc7", innerDark: "#3f4f5a" }, floors: { kitchen: "tiles", office: "wood", meeting: "carpet", lounge: "wood", archive: "concrete" }, rug: "lounge" },
   football: { wall: { face: "#2f6b45", top: "#3f8a5a", base: "#25553a", base2: "#1c412c", edge: "#142f20", inner: "#4f7f62", innerLight: "#6c9c7e", innerDark: "#223d2d" }, floors: { kitchen: "tiles", office: "wood", meeting: "turf", lounge: "turf", archive: "concrete" }, rug: "pitch" },
   fashion: { wall: { face: "#e6cfc8", top: "#f2e2dd", base: "#cfb0a8", base2: "#b8968e", edge: "#9f7f78", inner: "#d9bdb6", innerLight: "#ecd6d0", innerDark: "#8f6f68" }, floors: { kitchen: "tiles", office: "wood", meeting: "carpetLight", lounge: "marble", archive: "wood" }, rug: "round" },
@@ -3905,7 +4090,7 @@ Object.assign(Office.prototype, {
 
   // At night an idle employee may curl up on a free sofa seat for a while.
   tryNap(e, now) {
-    if (!isNight() || e.meet || this.evt || Math.random() > 0.5) return false;
+    if (this.lively || !isNight() || e.meet || this.evt || Math.random() > 0.5) return false;
     const taken = new Set(this.emps.filter((o) => o !== e && o.spot).map((o) => o.spot.key));
     const s = this.spots.find((x) => x.group === "sofa" && !taken.has(x.key));
     if (!s || !this.goToSpot(e, s)) return false;
@@ -4047,3 +4232,6 @@ function drawDayNight(b, t, ev) {
   b.fillStyle = `rgba(8,14,44,${a.toFixed(3)})`;
   b.fillRect(0, 0, LW, LH);
 }
+
+// Space keeps the original movable wall fittings and editor behavior.
+for (const piece of Object.keys(POLayout.WALL.space)) WALL_ART["space_"+piece] = WALL_ART["default_"+piece];
