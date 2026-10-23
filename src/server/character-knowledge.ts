@@ -25,10 +25,11 @@ export function characterProjects(character: Character, offices: OfficeDef[], da
   // Zoe assigned these HQ roles to BHU sales preparation. Reference access does
   // not create extra employees or expose unrelated/private workspaces.
   const bhuReferenceRole = character.officeId === "hang-fai" && ["developer", "marketing", "video"].includes(character.id);
+  const drawingReferenceRole = character.officeId === "hang-fai" && character.id === "developer";
   return offices.filter(o => o.id !== "hang-fai" &&
     (character.officeId === "hang-fai" || character.officeId === o.id) &&
     /^[a-z0-9-]+$/.test(character.id) &&
-    (fs.existsSync(path.join(o.employeesDir, character.id, "agent.md")) || (bhuReferenceRole && o.id === "bhu-housing")))
+    (fs.existsSync(path.join(o.employeesDir, character.id, "agent.md")) || (bhuReferenceRole && o.id === "bhu-housing") || (drawingReferenceRole && ["bhu-plan-ai", "plumbing-drawings", "electrical-fire-plans"].includes(o.id))))
     .map(o => {
       const sourceDir = path.join(o.cwd, "sources");
       let names: string[] = [];

@@ -18,6 +18,12 @@ try {
   fs.writeFileSync(path.join(a.cwd,'sources','.env'),'OPENAI_API_KEY=do-not-read');
   fs.writeFileSync(path.join(a.cwd,'sources','redact.md'),'OPENAI_API_KEY=never-include-this-value');
   fs.writeFileSync(path.join(a.employeesDir,'plumbing','memory.md'),'Water project note.');
+  const drawings=['bhu-plan-ai','plumbing-drawings','electrical-fire-plans'].map(id=>office(id,[]));
+  const privateOffice=office('private-book-art',[]);
+  const scoped=[...drawings,privateOffice];
+  assert.deepEqual(characterProjects({id:'developer',officeId:'hang-fai'},scoped).map(p=>p.id),drawings.map(p=>p.id),'Alex can read the three drawing projects assigned by Zoe');
+  assert.equal(characterProjects({id:'video',officeId:'hang-fai'},scoped).length,0,'drawing reference access does not leak to unrelated roles');
+  assert.equal(characterProjects({id:'developer',officeId:'bhu-plan-ai'},scoped).length,0,'HQ reference access does not expand another office');
   const offices=[a,b];
   const dataDir=path.join(root,'data'); fs.mkdirSync(path.join(dataDir,'water'),{recursive:true});
   fs.writeFileSync(path.join(dataDir,'water','board.json'),JSON.stringify({tasks:[

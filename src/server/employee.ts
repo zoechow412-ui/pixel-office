@@ -1336,6 +1336,7 @@ export class Employee extends EventEmitter {
   // A turn that failed because the sign-in / key is refused: the provider is marked as not connected (Settings → Models says so and
   // offers the sign-in again) and the message says what to do, not just "unauthorized".
   private engineError(engine: "codex" | "gemini", error: string): string {
+    if (engine === "codex" && /\b403\b/.test(error) && /<!doctype|<html|<head|<meta/i.test(error)) return "Codex 請求被網絡或服務入口拒絕（HTTP 403 HTML）；未證實登入失效。保留現有登入及任務，檢查連線後再試。";
     if (!AUTH_ERROR.test(error)) return error;
     markAuthFailed(engine);
     return tt(`server.${engine}.authFailed`, engine === "codex" ? "Codex sign-in is no longer valid ({detail}). Sign in again in Settings → Models." : "The Gemini API key was refused ({detail}). Check it in Settings → Models.", { detail: error.slice(0, 120) });
